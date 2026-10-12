@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- 請搜尋引擎不要收錄後台頁面 -->
+<meta name="robots" content="noindex, nofollow">
+<title>後台管理｜登山二手小舖</title>
+<style>
+  /* 配色跟前台一致 */
+  :root {
+    --bg: #f6f4ef;
+    --card: #ffffff;
+    --text: #2b2a27;
+    --muted: #7a766d;
+    --brand: #3f6b4f;
+    --brand-light: #e3ece5;
+    --danger: #b3261e;
+    --line: #e4e0d6;
+    --radius: 12px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  [hidden] { display: none !important; }
+
+  body {
+    font-family: -apple-system, "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.5;
+  }
+
+  .site-header { background: var(--text); color: #fff; padding: 16px 0; }
+  .site-header h1 { font-size: 18px; }
+  .container { max-width: 640px; margin: 0 auto; padding: 0 16px; }
+  main.container { padding-top: 20px; padding-bottom: 40px; }
+
+  .panel {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: var(--radius); padding: 20px; margin-bottom: 16px;
+  }
+  .panel h2 { font-size: 17px; margin-bottom: 8px; }
+  .panel p { margin-bottom: 12px; }
+  .label { font-size: 13px; color: var(--muted); margin-bottom: 4px !important; }
+
+  .account-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  .account-row p { margin-bottom: 0; }
+
+  .uid-box {
+    display: block; padding: 10px 12px; margin-bottom: 12px;
+    background: var(--brand-light); border-radius: 8px;
+    font-family: Menlo, Consolas, monospace; font-size: 13px; word-break: break-all;
+  }
+
+  .btn {
+    display: inline-block; padding: 10px 18px; border-radius: 10px;
+    font-size: 15px; font-weight: 600; cursor: pointer; border: 1px solid var(--line);
+    background: var(--card); color: var(--text); text-decoration: none;
+  }
+  .btn.primary { background: var(--brand); border-color: var(--brand); color: #fff; }
+  .btn.danger { color: var(--danger); border-color: #e8c4c0; }
+  .btn:disabled { opacity: 0.5; cursor: wait; }
+  .btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
+
+  .muted { color: var(--muted); font-size: 14px; }
+
+  .error {
+    background: #fbe9e7; color: var(--danger); border-radius: 10px;
+    padding: 12px 14px; font-size: 14px; margin-bottom: 16px;
+  }
+  .result { font-size: 14px; margin-top: 12px; margin-bottom: 0 !important; }
+  .result.fail { color: var(--danger); }
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="container"><h1>🔧 後台管理</h1></div>
+</header>
+
+<main class="container">
+  <!-- 錯誤訊息 -->
+  <div id="error" class="error" hidden></div>
+
+  <!-- 載入中 -->
+  <p id="loading" class="muted">載入中…</p>
+
+  <!-- 還沒登入時 -->
+  <section id="login-view" class="panel" hidden>
+    <p>請用你的 Google 帳號登入。</p>
+    <button id="login-btn" class="btn primary">用 Google 登入</button>
+  </section>
+
+  <!-- 登入了，但不是管理者 -->
+  <section id="denied-view" class="panel" hidden>
+    <h2>沒有管理權限</h2>
+    <p>目前登入的帳號 <strong id="denied-email"></strong> 不是這個網站的管理者。</p>
+    <p class="label">這個帳號的 UID</p>
+    <code id="denied-uid" class="uid-box"></code>
+    <button class="btn logout-btn">登出</button>
+  </section>
+
+  <!-- 管理者登入後 -->
+  <section id="admin-view" hidden>
+    <div class="panel">
+      <div class="account-row">
+        <div>
+          <p class="label">已登入</p>
+          <p><strong id="user-email"></strong></p>
+        </div>
+        <div class="btn-row">
+          <a class="btn" href="./" target="_blank">打開前台 ↗</a>
+          <button class="btn logout-btn">登出</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>示範資料</h2>
+      <p class="muted">把 6 件示範商品和全站設定寫進資料庫，用來確認前台能正確讀取。重複匯入只會覆蓋同一批示範商品，不會變成兩份。開始上架真正的商品之後，再按「清除示範商品」刪掉它們。</p>
+      <div class="btn-row">
+        <button id="import-btn" class="btn primary">匯入示範資料</button>
+        <button id="clear-btn" class="btn danger">清除示範商品</button>
+      </div>
+      <p id="demo-result" class="result" hidden></p>
+      <p id="product-count" class="result muted"></p>
+    </div>
+
+    <p class="muted">第五步會在這裡加上「上架商品」的表單。</p>
+  </section>
+</main>
+
+<!-- 先檢查是不是直接在電腦上雙擊打開（file://），那樣 Firebase 登入不會運作 -->
+<script>
+  if (location.protocol === 'file:') {
+    document.getElementById('loading').hidden = true;
+    const box = document.getElementById('error');
+    box.textContent = '後台要從 GitHub Pages 的網址打開，直接在電腦上雙擊檔案無法登入。';
+    box.hidden = false;
+  }
+</script>
+
+<script type="module">
+import { app } from './firebase-config.js';
+import {
+  getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut
+} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js';
+import {
+  getFirestore, collection, doc, getDoc, getDocs, writeBatch
+} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
+
+// =====================================================
+// 管理者的 UID：要跟 Firestore 規則裡寫的一模一樣
+//
+// 注意：這裡的檢查只是「決定要顯示哪個畫面」。
+// 就算有人改了這行程式碼，資料庫規則還是會擋下他，真正的門鎖在規則裡。
+// =====================================================
+const OWNER_UID = 'BKZr4zHaPYcJUviYwFEuGBJy5yr1';
+
+const auth = getAuth(app);
+const db = getFirestore(app);
+const $ = id => document.getElementById(id);
+
+// =====================================================
+// 示範資料（只用來測試，開始上架真商品後就可以清除）
+// =====================================================
+
+// 示範用照片：彩色方塊加文字
+function demoPhoto(label, color) {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+    <rect width="100" height="100" fill="${color}"/>
+    <text x="50" y="50" font-size="11" fill="#fff" text-anchor="middle" dominant-baseline="central">${label}</text>
+  </svg>`;
+  return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+}
+
+// id 會變成資料庫裡這筆資料的編號，不會存進欄位裡
+const DEMO_PRODUCTS = [
+  {
+    id: 'demo-001',
+    name: "Arc'teryx Beta LT 防水外套",
+    category: '外套', brand: "Arc'teryx",
+    price: 6800, originalPrice: 16000, negotiable: true,
+    condition: '近全新', usage: '2023 年購入，穿過約 5 次', defects: '無明顯瑕疵',
+    photos: [demoPhoto('正面', '#4a6fa5'), demoPhoto('背面', '#3d5f8f'), demoPhoto('領口特寫', '#6b8cbf')],
+    description: 'GORE-TEX 三層布，輕量好收納。\n帽子可調整，適合戴安全帽。',
+    tradeMethods: ['面交', '店到店', '郵寄'], meetupLocation: '台中',
+    variants: [{ label: 'M', qty: 1 }],
+    status: '販售中', createdAt: '2026-10-10T12:00:00'
+  },
+  {
+    id: 'demo-002',
+    name: 'Smartwool 美麗諾羊毛登山襪（全新）',
+    category: '配件', brand: 'Smartwool',
+    price: 450, originalPrice: 690, negotiable: false,
+    condition: '全新', usage: '全新未拆', defects: '',
+    photos: [demoPhoto('正面', '#8a9a5b'), demoPhoto('吊牌', '#6f7d45')],
+    description: '中厚款，適合多日行程。',
+    tradeMethods: ['面交', '店到店', '郵寄'], meetupLocation: '台中',
+    variants: [{ label: 'S', qty: 0 }, { label: 'M', qty: 3 }, { label: 'L', qty: 2 }],
+    status: '販售中', createdAt: '2026-10-12T12:00:00'
+  },
+  {
+    id: 'demo-003',
+    name: 'MSR Hubba Hubba 雙人帳',
+    category: '帳篷/睡袋/睡墊', brand: 'MSR',
+    price: 9500, originalPrice: 18800, negotiable: true,
+    condition: '良好', usage: '使用約 10 晚', defects: '地布有輕微磨損',
+    photos: [],
+    description: '含原廠地布與收納袋。',
+    tradeMethods: ['面交'], meetupLocation: '台中',
+    variants: [{ label: '', qty: 1 }],
+    status: '保留中', createdAt: '2026-10-08T12:00:00'
+  },
+  {
+    id: 'demo-004',
+    name: 'Osprey Exos 48 輕量背包',
+    category: '背包', brand: 'Osprey',
+    price: 4200, originalPrice: 7980, negotiable: true,
+    condition: '明顯使用痕跡', usage: '2021 年購入，走過多次百岳', defects: '背板網布有勾紗',
+    photos: [demoPhoto('正面', '#a0522d'), demoPhoto('背板', '#8b4513'), demoPhoto('勾紗特寫', '#b5653a')],
+    description: '',
+    tradeMethods: ['面交', '郵寄'], meetupLocation: '台中',
+    variants: [{ label: 'M', qty: 1 }],
+    status: '販售中', createdAt: '2026-10-05T12:00:00'
+  },
+  {
+    id: 'demo-005',
+    name: 'Salomon X Ultra 4 GTX 登山鞋',
+    category: '鞋', brand: 'Salomon',
+    price: 2800, originalPrice: 5980, negotiable: false,
+    condition: '良好', usage: '穿過約 8 次', defects: '鞋底正常磨耗',
+    photos: [],
+    description: '',
+    tradeMethods: ['面交', '店到店'], meetupLocation: '台中',
+    variants: [{ label: 'US 7', qty: 0 }],
+    status: '販售中', createdAt: '2026-09-30T12:00:00'
+  },
+  {
+    id: 'demo-006',
+    name: 'Snow Peak 鈦金屬單層杯 450',
+    category: '炊具', brand: 'Snow Peak',
+    price: 650, originalPrice: null, negotiable: false,
+    condition: '近全新', usage: '用過 2 次', defects: '',
+    photos: [],
+    description: '',
+    tradeMethods: ['面交', '店到店', '郵寄'], meetupLocation: '台中',
+    variants: [{ label: '', qty: 1 }],
+    status: '販售中', createdAt: '2026-10-11T12:00:00'
+  }
+];
+
+// 全站設定的初始內容（請之後改成你自己的；第五步會做修改設定的畫面）
+const DEMO_SETTINGS = {
+  shopName: '登山二手小舖',
+  tagline: '自用裝備出清・歡迎私訊詢問',
+  contacts: {
+    line: 'https://line.me/ti/p/~your-line-id',
+    instagram: 'https://www.instagram.com/your-account',
+    facebook: 'https://m.me/your-account',
+    threads: 'https://www.threads.com/@your-account'
+  },
+  purchaseNotes:
+    '1. 有興趣請先按「複製商品資訊」，貼到任一平台私訊我。\n' +
+    '2. 確認購買後可保留 24 小時，請於期限內匯款或約面交。\n' +
+    '3. 店到店與郵寄運費由買家負擔。\n' +
+    '4. 二手商品售出後恕不退換，有任何疑問請先詢問清楚。'
+};
+
+// =====================================================
+// 錯誤訊息（把常見錯誤翻成看得懂的中文）
+// =====================================================
+function explainError(err) {
+  const messages = {
+    'auth/unauthorized-domain':
+      '這個網址還不在 Firebase 的「授權網域」名單裡。請到 Firebase 控制台 → Authentication → 設定 → 授權網域，加入 ' + location.hostname,
+    'auth/popup-blocked':
+      '瀏覽器擋掉了登入視窗，請允許這個網站開啟彈出式視窗後再試一次。',
+    'auth/operation-not-allowed':
+      'Google 登入還沒啟用。請到 Firebase 控制台 → Authentication → 登入方式，啟用 Google。',
+    'auth/network-request-failed':
+      '網路連線有問題，請確認網路後再試一次。',
+    'permission-denied':
+      '資料庫拒絕了這個動作。請確認 Firestore 規則裡的 UID 和你的帳號一致，而且規則已經按下「發布」。'
+  };
+  return messages[err.code] || `發生錯誤：${err.code || err.message}`;
+}
+
+function showError(err) {
+  // 使用者自己關掉登入視窗，不算錯誤
+  if (err.code === 'auth/popup-closed-by-user' || err.code === 'auth/cancelled-popup-request') return;
+  $('error').textContent = explainError(err);
+  $('error').hidden = false;
+}
+
+// =====================================================
+// 登入 / 登出
+// =====================================================
+$('login-btn').addEventListener('click', async () => {
+  $('error').hidden = true;
+  try {
+    await signInWithPopup(auth, new GoogleAuthProvider());
+  } catch (err) {
+    showError(err);
+  }
+});
+
+document.querySelectorAll('.logout-btn').forEach(btn => {
+  btn.addEventListener('click', () => signOut(auth));
+});
+
+// 登入狀態一改變（包含剛打開網頁時），就切換畫面
+// Firebase 會記住登入狀態，所以下次打開不用再登入
+onAuthStateChanged(auth, user => {
+  $('loading').hidden = true;
+  $('login-view').hidden = true;
+  $('denied-view').hidden = true;
+  $('admin-view').hidden = true;
+
+  if (!user) {
+    $('login-view').hidden = false;
+  } else if (user.uid !== OWNER_UID) {
+    $('denied-email').textContent = user.email;
+    $('denied-uid').textContent = user.uid;
+    $('denied-view').hidden = false;
+  } else {
+    $('user-email').textContent = user.email;
+    $('admin-view').hidden = false;
+    refreshCount();
+  }
+});
+
+// =====================================================
+// 示範資料：匯入 / 清除
+// =====================================================
+function showResult(message, isFail = false) {
+  $('demo-result').textContent = message;
+  $('demo-result').classList.toggle('fail', isFail);
+  $('demo-result').hidden = false;
+}
+
+function setBusy(busy) {
+  $('import-btn').disabled = busy;
+  $('clear-btn').disabled = busy;
+}
+
+// 顯示資料庫目前有幾件商品
+async function refreshCount() {
+  try {
+    const snap = await getDocs(collection(db, 'products'));
+    $('product-count').textContent = `資料庫目前共有 ${snap.size} 件商品。`;
+  } catch (err) {
+    $('product-count').textContent = '';
+  }
+}
+
+$('import-btn').addEventListener('click', async () => {
+  if (!confirm('要把 6 件示範商品寫進資料庫嗎？')) return;
+  setBusy(true);
+  try {
+    // batch：把多筆寫入打包成一次，要嘛全部成功、要嘛全部不做，不會只寫一半
+    const batch = writeBatch(db);
+    DEMO_PRODUCTS.forEach(({ id, ...data }) => {
+      batch.set(doc(db, 'products', id), data);
+    });
+
+    // 全站設定只在「還沒有」的時候寫入，避免蓋掉你之後改過的設定
+    const settingsRef = doc(db, 'settings', 'site');
+    const existing = await getDoc(settingsRef);
+    if (!existing.exists()) {
+      batch.set(settingsRef, DEMO_SETTINGS);
+    }
+
+    await batch.commit();
+    showResult('✅ 匯入完成！按「打開前台」就能看到這些商品。');
+  } catch (err) {
+    showResult('❌ 匯入失敗：' + explainError(err), true);
+  } finally {
+    setBusy(false);
+    refreshCount();
+  }
+});
+
+$('clear-btn').addEventListener('click', async () => {
+  if (!confirm('要刪除 6 件示範商品嗎？（不會動到你自己上架的商品和全站設定）')) return;
+  setBusy(true);
+  try {
+    const batch = writeBatch(db);
+    DEMO_PRODUCTS.forEach(({ id }) => batch.delete(doc(db, 'products', id)));
+    await batch.commit();
+    showResult('✅ 示範商品已清除。');
+  } catch (err) {
+    showResult('❌ 清除失敗：' + explainError(err), true);
+  } finally {
+    setBusy(false);
+    refreshCount();
+  }
+});
+</script>
+</body>
+</html>
