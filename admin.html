@@ -117,6 +117,7 @@
   .check-row { display: flex; flex-wrap: wrap; gap: 8px 18px; }
   .check-row label { display: flex; align-items: center; gap: 6px; font-size: 15px; cursor: pointer; }
   .check-row input { width: 18px; height: 18px; accent-color: var(--brand); }
+  .check-tall { min-height: 44px; align-items: center; } /* 跟旁邊輸入框一樣高，看起來比較整齊 */
 
   .variant-head, .variant-row { display: grid; grid-template-columns: 1fr 92px 42px; gap: 8px; align-items: center; }
   .variant-head { font-size: 12px; color: var(--muted); margin-bottom: 4px; }
@@ -242,13 +243,11 @@
           <input type="number" id="f-price" inputmode="numeric" min="0" step="1" placeholder="NT$">
         </div>
         <div class="field">
-          <label class="field-label" for="f-original">原價</label>
-          <input type="number" id="f-original" inputmode="numeric" min="0" step="1" placeholder="選填">
+          <span class="field-label">議價</span>
+          <div class="check-row check-tall">
+            <label><input type="checkbox" id="f-negotiable"> 可議價</label>
+          </div>
         </div>
-      </div>
-
-      <div class="field check-row">
-        <label><input type="checkbox" id="f-negotiable"> 可議價</label>
       </div>
 
       <div class="field">
@@ -329,7 +328,7 @@ import {
   getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut
 } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js';
 import {
-  getFirestore, collection, doc, getDoc, getDocs, addDoc, updateDoc, writeBatch
+  getFirestore, collection, doc, getDoc, getDocs, addDoc, updateDoc, writeBatch, deleteField
 } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
 
 // =====================================================
@@ -347,7 +346,7 @@ const $ = id => document.getElementById(id);
 // 選項清單（類別要跟前台 index.html 的一樣）
 const CATEGORIES = ['外套', '上衣', '褲子', '鞋', '背包', '帳篷/睡袋/睡墊', '炊具', '配件', '其他'];
 const CONDITIONS = ['全新', '近全新', '良好', '明顯使用痕跡'];
-const TRADE_METHODS = ['面交', '店到店', '郵寄'];
+const TRADE_METHODS = ['面交', '7-11店到店'];
 
 const CATEGORY_ICON = {
   '外套': '🧥', '上衣': '👕', '褲子': '👖', '鞋': '🥾', '背包': '🎒',
@@ -624,7 +623,6 @@ function openForm(p) {
   $('f-category').value = p ? p.category || '' : '';
   $('f-brand').value = p ? p.brand || '' : '';
   $('f-price').value = p ? p.price ?? '' : '';
-  $('f-original').value = p && p.originalPrice ? p.originalPrice : '';
   $('f-negotiable').checked = p ? !!p.negotiable : false;
   $('f-condition').value = p ? p.condition || '' : '';
   $('f-usage').value = p ? p.usage || '' : '';
@@ -675,7 +673,6 @@ function readForm() {
   const category = $('f-category').value;
   const condition = $('f-condition').value;
   const priceRaw = text('f-price');
-  const originalRaw = text('f-original');
 
   if (!name) errors.push('請填寫商品名稱');
   if (!category) errors.push('請選擇類別');
@@ -683,12 +680,6 @@ function readForm() {
 
   const price = Number(priceRaw);
   if (priceRaw === '' || !Number.isInteger(price) || price < 0) errors.push('售價請填 0 以上的整數');
-
-  let originalPrice = null;
-  if (originalRaw !== '') {
-    originalPrice = Number(originalRaw);
-    if (!Number.isInteger(originalPrice) || originalPrice < 0) errors.push('原價請填 0 以上的整數，或留空');
-  }
 
   // 尺寸列
   const rows = [...document.querySelectorAll('#variant-rows .variant-row')];
@@ -715,7 +706,6 @@ function readForm() {
     category,
     brand: text('f-brand'),
     price,
-    originalPrice,
     negotiable: $('f-negotiable').checked,
     condition,
     usage: text('f-usage'),
@@ -749,7 +739,8 @@ $('product-form').addEventListener('submit', async e => {
   try {
     if (editingId) {
       // 編輯：只更新表單裡的欄位，照片和上架時間不會被動到
-      await updateDoc(doc(db, 'products', editingId), data);
+      // 舊資料如果還有「原價」欄位，順便從資料庫刪掉
+      await updateDoc(doc(db, 'products', editingId), { ...data, originalPrice: deleteField() });
       showToast('已儲存');
     } else {
       // 新增：資料庫會自動產生一個商品編號
@@ -792,11 +783,11 @@ const DEMO_PRODUCTS = [
     id: 'demo-001',
     name: "Arc'teryx Beta LT 防水外套",
     category: '外套', brand: "Arc'teryx",
-    price: 6800, originalPrice: 16000, negotiable: true,
+    price: 6800, negotiable: true,
     condition: '近全新', usage: '2023 年購入，穿過約 5 次', defects: '無明顯瑕疵',
     photos: [demoPhoto('正面', '#4a6fa5'), demoPhoto('背面', '#3d5f8f'), demoPhoto('領口特寫', '#6b8cbf')],
     description: 'GORE-TEX 三層布，輕量好收納。\n帽子可調整，適合戴安全帽。',
-    tradeMethods: ['面交', '店到店', '郵寄'], meetupLocation: '台中',
+    tradeMethods: ['面交', '7-11店到店'], meetupLocation: '台中',
     variants: [{ label: 'M', qty: 1 }],
     status: '販售中', createdAt: '2026-10-10T12:00:00'
   },
@@ -804,11 +795,11 @@ const DEMO_PRODUCTS = [
     id: 'demo-002',
     name: 'Smartwool 美麗諾羊毛登山襪（全新）',
     category: '配件', brand: 'Smartwool',
-    price: 450, originalPrice: 690, negotiable: false,
+    price: 450, negotiable: false,
     condition: '全新', usage: '全新未拆', defects: '',
     photos: [demoPhoto('正面', '#8a9a5b'), demoPhoto('吊牌', '#6f7d45')],
     description: '中厚款，適合多日行程。',
-    tradeMethods: ['面交', '店到店', '郵寄'], meetupLocation: '台中',
+    tradeMethods: ['面交', '7-11店到店'], meetupLocation: '台中',
     variants: [{ label: 'S', qty: 0 }, { label: 'M', qty: 3 }, { label: 'L', qty: 2 }],
     status: '販售中', createdAt: '2026-10-12T12:00:00'
   },
@@ -816,7 +807,7 @@ const DEMO_PRODUCTS = [
     id: 'demo-003',
     name: 'MSR Hubba Hubba 雙人帳',
     category: '帳篷/睡袋/睡墊', brand: 'MSR',
-    price: 9500, originalPrice: 18800, negotiable: true,
+    price: 9500, negotiable: true,
     condition: '良好', usage: '使用約 10 晚', defects: '地布有輕微磨損',
     photos: [],
     description: '含原廠地布與收納袋。',
@@ -828,11 +819,11 @@ const DEMO_PRODUCTS = [
     id: 'demo-004',
     name: 'Osprey Exos 48 輕量背包',
     category: '背包', brand: 'Osprey',
-    price: 4200, originalPrice: 7980, negotiable: true,
+    price: 4200, negotiable: true,
     condition: '明顯使用痕跡', usage: '2021 年購入，走過多次百岳', defects: '背板網布有勾紗',
     photos: [demoPhoto('正面', '#a0522d'), demoPhoto('背板', '#8b4513'), demoPhoto('勾紗特寫', '#b5653a')],
     description: '',
-    tradeMethods: ['面交', '郵寄'], meetupLocation: '台中',
+    tradeMethods: ['面交', '7-11店到店'], meetupLocation: '台中',
     variants: [{ label: 'M', qty: 1 }],
     status: '販售中', createdAt: '2026-10-05T12:00:00'
   },
@@ -840,11 +831,11 @@ const DEMO_PRODUCTS = [
     id: 'demo-005',
     name: 'Salomon X Ultra 4 GTX 登山鞋',
     category: '鞋', brand: 'Salomon',
-    price: 2800, originalPrice: 5980, negotiable: false,
+    price: 2800, negotiable: false,
     condition: '良好', usage: '穿過約 8 次', defects: '鞋底正常磨耗',
     photos: [],
     description: '',
-    tradeMethods: ['面交', '店到店'], meetupLocation: '台中',
+    tradeMethods: ['面交', '7-11店到店'], meetupLocation: '台中',
     variants: [{ label: 'US 7', qty: 0 }],
     status: '販售中', createdAt: '2026-09-30T12:00:00'
   },
@@ -852,11 +843,11 @@ const DEMO_PRODUCTS = [
     id: 'demo-006',
     name: 'Snow Peak 鈦金屬單層杯 450',
     category: '炊具', brand: 'Snow Peak',
-    price: 650, originalPrice: null, negotiable: false,
+    price: 650, negotiable: false,
     condition: '近全新', usage: '用過 2 次', defects: '',
     photos: [],
     description: '',
-    tradeMethods: ['面交', '店到店', '郵寄'], meetupLocation: '台中',
+    tradeMethods: ['面交', '7-11店到店'], meetupLocation: '台中',
     variants: [{ label: '', qty: 1 }],
     status: '販售中', createdAt: '2026-10-11T12:00:00'
   }
@@ -868,14 +859,12 @@ const DEMO_SETTINGS = {
   tagline: '自用裝備出清・歡迎私訊詢問',
   contacts: {
     line: 'https://line.me/ti/p/~your-line-id',
-    instagram: 'https://www.instagram.com/your-account',
-    facebook: 'https://m.me/your-account',
-    threads: 'https://www.threads.com/@your-account'
+    instagram: 'https://ig.me/m/your-account'
   },
   purchaseNotes:
     '1. 有興趣請先按「複製商品資訊」，貼到任一平台私訊我。\n' +
     '2. 確認購買後可保留 24 小時，請於期限內匯款或約面交。\n' +
-    '3. 店到店與郵寄運費由買家負擔。\n' +
+    '3. 7-11 店到店運費由買家負擔。\n' +
     '4. 二手商品售出後恕不退換，有任何疑問請先詢問清楚。'
 };
 
