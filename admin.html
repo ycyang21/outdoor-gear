@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- 請搜尋引擎不要收錄後台頁面 -->
+<meta name="robots" content="noindex, nofollow">
+<title>後台管理｜登山二手小舖</title>
+<style>
+  /* 配色跟前台一致 */
+  :root {
+    --bg: #f6f4ef;
+    --card: #ffffff;
+    --text: #2b2a27;
+    --muted: #7a766d;
+    --brand: #3f6b4f;
+    --brand-light: #e3ece5;
+    --danger: #b3261e;
+    --line: #e4e0d6;
+    --radius: 12px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  [hidden] { display: none !important; }
+
+  body {
+    font-family: -apple-system, "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.5;
+  }
+
+  .site-header { background: var(--text); color: #fff; padding: 16px 0; }
+  .site-header h1 { font-size: 18px; }
+  .container { max-width: 640px; margin: 0 auto; padding: 0 16px; }
+  main.container { padding-top: 20px; padding-bottom: 40px; }
+
+  .panel {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: var(--radius); padding: 20px; margin-bottom: 16px;
+  }
+  .panel p { margin-bottom: 12px; }
+  .label { font-size: 13px; color: var(--muted); margin-bottom: 4px !important; }
+
+  .uid-box {
+    display: block; padding: 10px 12px; margin-bottom: 12px;
+    background: var(--brand-light); border-radius: 8px;
+    font-family: Menlo, Consolas, monospace; font-size: 14px; word-break: break-all;
+  }
+
+  .btn {
+    display: inline-block; padding: 10px 18px; border-radius: 10px;
+    font-size: 15px; font-weight: 600; cursor: pointer; border: 1px solid var(--line);
+    background: var(--card); color: var(--text);
+  }
+  .btn.primary { background: var(--brand); border-color: var(--brand); color: #fff; }
+  .btn + .btn { margin-left: 8px; }
+
+  .muted { color: var(--muted); font-size: 14px; }
+
+  .error {
+    background: #fbe9e7; color: var(--danger); border-radius: 10px;
+    padding: 12px 14px; font-size: 14px; margin-bottom: 16px;
+  }
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="container"><h1>🔧 後台管理</h1></div>
+</header>
+
+<main class="container">
+  <!-- 錯誤訊息 -->
+  <div id="error" class="error" hidden></div>
+
+  <!-- 載入中 -->
+  <p id="loading" class="muted">載入中…</p>
+
+  <!-- 還沒登入時 -->
+  <section id="login-view" class="panel" hidden>
+    <p>請用你的 Google 帳號登入。</p>
+    <button id="login-btn" class="btn primary">用 Google 登入</button>
+  </section>
+
+  <!-- 登入之後 -->
+  <section id="admin-view" hidden>
+    <div class="panel">
+      <p class="label">已登入帳號</p>
+      <p><strong id="user-email"></strong></p>
+
+      <p class="label">你的 UID（帳號專屬編號）</p>
+      <code id="user-uid" class="uid-box"></code>
+
+      <button id="copy-uid" class="btn primary">複製 UID</button>
+      <button id="logout-btn" class="btn">登出</button>
+    </div>
+    <p class="muted">把 UID 貼給 Claude，下一步就用它來設定資料庫規則。</p>
+  </section>
+</main>
+
+<!-- 先檢查是不是直接在電腦上雙擊打開（file://），那樣 Firebase 登入不會運作 -->
+<script>
+  if (location.protocol === 'file:') {
+    document.getElementById('loading').hidden = true;
+    const box = document.getElementById('error');
+    box.textContent = '後台要從 GitHub Pages 的網址打開，直接在電腦上雙擊檔案無法登入。';
+    box.hidden = false;
+  }
+</script>
+
+<script type="module">
+import { app } from './firebase-config.js';
+import {
+  getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut
+} from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js';
+
+const auth = getAuth(app);
+const $ = id => document.getElementById(id);
+
+// ----- 顯示錯誤訊息（把常見錯誤翻成看得懂的中文） -----
+function showError(err) {
+  const messages = {
+    'auth/unauthorized-domain':
+      '這個網址還不在 Firebase 的「授權網域」名單裡。請到 Firebase 控制台 → Authentication → 設定 → 授權網域，加入 ' + location.hostname,
+    'auth/popup-blocked':
+      '瀏覽器擋掉了登入視窗，請允許這個網站開啟彈出式視窗後再試一次。',
+    'auth/operation-not-allowed':
+      'Google 登入還沒啟用。請到 Firebase 控制台 → Authentication → 登入方式，啟用 Google。',
+    'auth/network-request-failed':
+      '網路連線有問題，請確認網路後再試一次。'
+  };
+  // 使用者自己關掉登入視窗，不算錯誤
+  if (err.code === 'auth/popup-closed-by-user' || err.code === 'auth/cancelled-popup-request') return;
+
+  $('error').textContent = messages[err.code] || `發生錯誤：${err.code || err.message}`;
+  $('error').hidden = false;
+}
+
+function clearError() {
+  $('error').hidden = true;
+}
+
+// ----- 登入 / 登出 -----
+$('login-btn').addEventListener('click', async () => {
+  clearError();
+  try {
+    await signInWithPopup(auth, new GoogleAuthProvider());
+  } catch (err) {
+    showError(err);
+  }
+});
+
+$('logout-btn').addEventListener('click', () => signOut(auth));
+
+$('copy-uid').addEventListener('click', async () => {
+  try {
+    await navigator.clipboard.writeText($('user-uid').textContent);
+    $('copy-uid').textContent = '已複製 ✓';
+    setTimeout(() => { $('copy-uid').textContent = '複製 UID'; }, 2000);
+  } catch {
+    alert('複製失敗，請手動選取 UID 複製');
+  }
+});
+
+// ----- 登入狀態一改變（包含剛打開網頁時），就切換畫面 -----
+// Firebase 會記住登入狀態，所以下次打開不用再登入
+onAuthStateChanged(auth, user => {
+  $('loading').hidden = true;
+  if (user) {
+    $('user-email').textContent = user.email;
+    $('user-uid').textContent = user.uid;
+    $('login-view').hidden = true;
+    $('admin-view').hidden = false;
+  } else {
+    $('admin-view').hidden = true;
+    $('login-view').hidden = false;
+  }
+});
+</script>
+</body>
+</html>
