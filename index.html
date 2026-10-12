@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>登山二手小舖</title>
+<!-- 圖示（LINE、Instagram）：使用 Bootstrap Icons 圖示庫 -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
 <style>
   /* ===== 顏色與基本設定：想換配色只要改這裡 ===== */
   :root {
@@ -103,7 +105,6 @@
   .card-meta { font-size: 12px; color: var(--muted); margin-top: 2px; }
   .card-price { margin-top: 6px; display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; }
   .price { font-size: 17px; font-weight: 700; color: var(--brand); }
-  .original { font-size: 12px; color: var(--muted); text-decoration: line-through; }
   .tag { font-size: 11px; padding: 1px 6px; border-radius: 4px; background: var(--brand-light); color: var(--brand); }
 
   .empty { text-align: center; color: var(--muted); padding: 40px 0; }
@@ -176,7 +177,6 @@
   .detail-name { font-size: 22px; line-height: 1.35; }
   .detail-price { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; margin: 8px 0 16px; }
   .detail-price .price { font-size: 26px; }
-  .detail-price .original { font-size: 14px; }
 
   .section-label { font-size: 14px; color: var(--muted); margin-bottom: 6px; }
   .sizes { display: flex; flex-wrap: wrap; gap: 8px; }
@@ -218,15 +218,20 @@
     width: 100%; padding: 12px; border: none; border-radius: 10px;
     background: var(--brand); color: #fff; font-size: 16px; font-weight: 600; cursor: pointer;
   }
-  .social { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-top: 10px; }
-  .social a {
-    display: block; text-align: center; padding: 10px; border-radius: 10px;
-    color: #fff; text-decoration: none; font-size: 14px; font-weight: 600;
+  /* LINE、Instagram 圓形圖示按鈕 */
+  .social { display: flex; align-items: center; justify-content: center; gap: 14px; margin-top: 14px; }
+  .social-label { font-size: 14px; color: var(--muted); }
+  .social-btn {
+    width: 48px; height: 48px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-size: 24px; text-decoration: none;
+    transition: transform 0.15s;
   }
-  .social .line { background: #06c755; }
-  .social .instagram { background: #c13584; }
-  .social .facebook { background: #1877f2; }
-  .social .threads { background: #111; }
+  .social-btn:hover { transform: scale(1.08); }
+  .social-btn.line { background: #06c755; }
+  .social-btn.instagram {
+    background: radial-gradient(circle at 30% 107%, #fdf497 0%, #fdf497 5%, #fd5949 45%, #d6249f 60%, #285aeb 90%);
+  }
 
   .notes { margin-top: 14px; font-size: 14px; }
   .notes summary { cursor: pointer; color: var(--brand); font-weight: 600; }
@@ -280,7 +285,7 @@
 const DEFAULT_SETTINGS = {
   shopName: '登山二手小舖',
   tagline: '自用裝備出清・歡迎私訊詢問',
-  contacts: { line: '', instagram: '', facebook: '', threads: '' },
+  contacts: { line: '', instagram: '' },
   purchaseNotes: ''
 };
 
@@ -340,7 +345,6 @@ function normalizeProduct(id, data) {
     category: data.category || '其他',
     brand: data.brand || '',
     price: Number(data.price) || 0,
-    originalPrice: Number(data.originalPrice) || null,
     negotiable: !!data.negotiable,
     condition: data.condition || '',
     usage: data.usage || '',
@@ -490,7 +494,6 @@ function renderGrid() {
           <p class="card-meta">${esc(meta)}</p>
           <div class="card-price">
             <span class="price">${money(p.price)}</span>
-            ${p.originalPrice ? `<span class="original">${money(p.originalPrice)}</span>` : ''}
             ${p.negotiable ? '<span class="tag">可議價</span>' : ''}
           </div>
         </div>
@@ -535,16 +538,15 @@ function renderDetail(p) {
     status === '已售出' ? '<div class="notice">這件商品已經售出囉，有類似需求也歡迎私訊詢問。</div>' :
     status === '保留中' ? '<div class="notice reserved">這件商品目前保留中，如果對方取消會再開放購買。</div>' : '';
 
-  // 聯絡按鈕：沒填網址的平台不顯示
+  // 聯絡圖示：沒填網址的平台不顯示
   const c = settings.contacts;
   const socialLinks = [
     ['line', 'LINE', c.line],
-    ['instagram', 'Instagram', c.instagram],
-    ['facebook', 'Facebook', c.facebook],
-    ['threads', 'Threads', c.threads]
+    ['instagram', 'Instagram', c.instagram]
   ].filter(([, , url]) => url)
-   .map(([cls, label, url]) =>
-     `<a class="${cls}" href="${esc(url)}" target="_blank" rel="noopener">${label}</a>`
+   .map(([key, label, url]) =>
+     `<a class="social-btn ${key}" href="${esc(url)}" target="_blank" rel="noopener"
+         aria-label="用 ${label} 私訊" title="${label}"><i class="bi bi-${key}"></i></a>`
    ).join('');
 
   document.getElementById('detail-view').innerHTML = `
@@ -576,7 +578,6 @@ function renderDetail(p) {
         <h2 class="detail-name">${esc(p.name)}</h2>
         <div class="detail-price">
           <span class="price">${money(p.price)}</span>
-          ${p.originalPrice ? `<span class="original">原價 ${money(p.originalPrice)}</span>` : ''}
           ${p.negotiable ? '<span class="tag">可議價</span>' : ''}
         </div>
 
@@ -592,9 +593,9 @@ function renderDetail(p) {
 
         <div class="contact">
           <h3>想購買或詢問？</h3>
-          <p>先按下方按鈕複製商品資訊，再貼到任一平台私訊我。</p>
+          <p>先按「複製商品資訊」，再點下方圖示私訊我，貼上就好。</p>
           <button class="copy-btn" onclick="copyProductInfo()">📋 複製商品資訊</button>
-          ${socialLinks ? `<div class="social">${socialLinks}</div>` : ''}
+          ${socialLinks ? `<div class="social"><span class="social-label">私訊我</span>${socialLinks}</div>` : ''}
           ${settings.purchaseNotes ? `
             <details class="notes">
               <summary>購買須知</summary>
