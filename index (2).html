@@ -19,7 +19,6 @@
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  [hidden] { display: none !important; }
 
   body {
     font-family: -apple-system, "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
@@ -32,7 +31,6 @@
   .site-header { background: var(--brand); color: #fff; padding: 18px 0; }
   .site-header h1 { font-size: 20px; }
   .site-header p { font-size: 13px; opacity: 0.85; }
-  .home-link { color: inherit; text-decoration: none; }
 
   /* 內容最寬 1100px，置中；手機左右留 16px */
   .container { max-width: 1100px; margin: 0 auto; padding: 0 16px; }
@@ -107,196 +105,24 @@
   .tag { font-size: 11px; padding: 1px 6px; border-radius: 4px; background: var(--brand-light); color: var(--brand); }
 
   .empty { text-align: center; color: var(--muted); padding: 40px 0; }
-
-  /* =====================================================
-     商品頁
-     ===================================================== */
-  .detail { padding: 14px 0 48px; }
-  .back-btn {
-    background: none; border: none; color: var(--brand);
-    font-size: 15px; cursor: pointer; padding: 4px 0; margin-bottom: 12px;
-  }
-
-  /* 手機：照片在上、資訊在下；電腦（900px 以上）：左右兩欄 */
-  .detail-layout { display: grid; gap: 20px; }
-  @media (min-width: 900px) {
-    .detail-layout { grid-template-columns: 1fr 1fr; gap: 36px; align-items: start; }
-    .gallery-col { position: sticky; top: 16px; }
-  }
-
-  /* ----- 照片輪播：手機用手指左右滑 ----- */
-  .gallery { position: relative; }
-  .gallery-track {
-    display: flex;
-    overflow-x: auto;
-    scroll-snap-type: x mandatory;
-    scrollbar-width: none;
-    border-radius: var(--radius);
-    background: var(--brand-light);
-  }
-  .gallery-track::-webkit-scrollbar { display: none; }
-  .gallery-track img {
-    flex: 0 0 100%;
-    width: 100%;
-    aspect-ratio: 1 / 1;
-    object-fit: cover;
-    scroll-snap-align: start;
-    display: block;
-  }
-  .gallery-counter {
-    position: absolute; right: 10px; bottom: 10px;
-    background: rgba(0, 0, 0, 0.55); color: #fff;
-    font-size: 12px; padding: 2px 10px; border-radius: 999px;
-  }
-  /* 左右箭頭：只在有滑鼠的裝置（電腦）顯示 */
-  .gallery-nav {
-    position: absolute; top: 50%; transform: translateY(-50%);
-    width: 36px; height: 36px; border-radius: 50%; border: none;
-    background: rgba(255, 255, 255, 0.85); font-size: 18px; cursor: pointer;
-    display: none; align-items: center; justify-content: center;
-  }
-  .gallery-nav.prev { left: 10px; }
-  .gallery-nav.next { right: 10px; }
-  @media (hover: hover) { .gallery-nav { display: flex; } }
-
-  .thumbs { display: flex; gap: 8px; margin-top: 10px; overflow-x: auto; }
-  .thumbs img {
-    width: 60px; height: 60px; flex: 0 0 auto; object-fit: cover;
-    border-radius: 8px; border: 2px solid transparent; opacity: 0.6; cursor: pointer;
-  }
-  .thumbs img.active { border-color: var(--brand); opacity: 1; }
-
-  /* ----- 商品資訊 ----- */
-  .detail-status {
-    display: inline-block; padding: 2px 10px; border-radius: 6px;
-    font-size: 13px; font-weight: 600; color: #fff; margin-bottom: 6px;
-  }
-  .detail-status.reserved { background: var(--accent); }
-  .detail-status.sold { background: #555; }
-  .detail-name { font-size: 22px; line-height: 1.35; }
-  .detail-price { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; margin: 8px 0 16px; }
-  .detail-price .price { font-size: 26px; }
-  .detail-price .original { font-size: 14px; }
-
-  .section-label { font-size: 14px; color: var(--muted); margin-bottom: 6px; }
-  .sizes { display: flex; flex-wrap: wrap; gap: 8px; }
-  .size-btn {
-    min-width: 52px; padding: 8px 14px;
-    border: 1px solid var(--line); border-radius: 8px;
-    background: var(--card); color: var(--text); font-size: 15px; cursor: pointer;
-  }
-  .size-btn.active { border-color: var(--brand); background: var(--brand-light); color: var(--brand); font-weight: 600; }
-  .size-btn:disabled { color: #b5b1a8; background: #f1efea; text-decoration: line-through; cursor: not-allowed; }
-  .stock-note { font-size: 13px; color: var(--muted); margin-top: 6px; }
-
-  .spec {
-    display: grid; grid-template-columns: 5.5em 1fr; gap: 8px 12px;
-    font-size: 14px; margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--line);
-  }
-  .spec dt { color: var(--muted); }
-  .spec dd { white-space: pre-line; }
-
-  .description {
-    font-size: 14px; white-space: pre-line;
-    margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--line);
-  }
-
-  /* ----- 聯絡區 ----- */
-  .notice {
-    margin-top: 20px; padding: 10px 14px; border-radius: 10px; font-size: 14px;
-    background: #f1efea; color: var(--muted);
-  }
-  .notice.reserved { background: #f8e9de; color: #8a4518; }
-
-  .contact {
-    margin-top: 20px; padding: 16px;
-    background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
-  }
-  .contact h3 { font-size: 16px; margin-bottom: 4px; }
-  .contact p { font-size: 13px; color: var(--muted); margin-bottom: 12px; }
-  .copy-btn {
-    width: 100%; padding: 12px; border: none; border-radius: 10px;
-    background: var(--brand); color: #fff; font-size: 16px; font-weight: 600; cursor: pointer;
-  }
-  .social { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-top: 10px; }
-  .social a {
-    display: block; text-align: center; padding: 10px; border-radius: 10px;
-    color: #fff; text-decoration: none; font-size: 14px; font-weight: 600;
-  }
-  .social .line { background: #06c755; }
-  .social .instagram { background: #c13584; }
-  .social .facebook { background: #1877f2; }
-  .social .threads { background: #111; }
-
-  .notes { margin-top: 14px; font-size: 14px; }
-  .notes summary { cursor: pointer; color: var(--brand); font-weight: 600; }
-  .notes div { white-space: pre-line; margin-top: 8px; color: var(--muted); }
-
-  /* 「已複製」提示 */
-  .toast {
-    position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%);
-    background: var(--text); color: #fff; padding: 10px 18px; border-radius: 999px;
-    font-size: 14px; white-space: nowrap;
-    opacity: 0; pointer-events: none; transition: opacity 0.2s;
-  }
-  .toast.show { opacity: 1; }
 </style>
 </head>
 <body>
 
 <header class="site-header">
   <div class="container">
-    <h1><a class="home-link" href="#">登山二手小舖</a></h1>
+    <h1>登山二手小舖</h1>
     <p>自用裝備出清・歡迎私訊詢問</p>
   </div>
 </header>
 
 <main class="container">
-  <!-- 列表畫面 -->
-  <div id="list-view" hidden>
-    <nav class="filters" id="filters"></nav>
-    <p class="count" id="count"></p>
-    <section class="grid" id="grid"></section>
-  </div>
-
-  <!-- 商品頁畫面（點商品才會出現） -->
-  <div id="detail-view" class="detail" hidden></div>
+  <nav class="filters" id="filters"></nav>
+  <p class="count" id="count"></p>
+  <section class="grid" id="grid"></section>
 </main>
 
-<div class="toast" id="toast"></div>
-
 <script>
-// =====================================================
-// 全站設定：你的聯絡方式和購買須知
-// 請把網址換成你自己的；留空字串 '' 的平台不會顯示按鈕。
-// 第四步會改成存在 Firestore，讓你在後台就能修改。
-// =====================================================
-const SITE_SETTINGS = {
-  contacts: {
-    line: 'https://line.me/ti/p/~your-line-id',
-    instagram: 'https://www.instagram.com/your-account',
-    facebook: 'https://m.me/your-account',
-    threads: 'https://www.threads.com/@your-account'
-  },
-  // 範例文字，請改成你自己的規則
-  purchaseNotes:
-    '1. 有興趣請先按「複製商品資訊」，貼到任一平台私訊我。\n' +
-    '2. 確認購買後可保留 24 小時，請於期限內匯款或約面交。\n' +
-    '3. 店到店與郵寄運費由買家負擔。\n' +
-    '4. 二手商品售出後恕不退換，有任何疑問請先詢問清楚。'
-};
-
-// =====================================================
-// 示範用照片產生器（只給假資料用，第五步上傳真照片後就會刪掉）
-// =====================================================
-function demoPhoto(label, color) {
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-    <rect width="100" height="100" fill="${color}"/>
-    <text x="50" y="50" font-size="11" fill="#fff" text-anchor="middle" dominant-baseline="central">${label}</text>
-  </svg>`;
-  return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
-}
-
 // =====================================================
 // 假資料：這就是「公開資料」的樣子。
 // 第四步會把這一整段換成從 Firestore 讀取。
@@ -314,12 +140,8 @@ const products = [
     condition: '近全新',
     usage: '2023 年購入，穿過約 5 次',
     defects: '無明顯瑕疵',
-    photos: [
-      demoPhoto('正面', '#4a6fa5'),
-      demoPhoto('背面', '#3d5f8f'),
-      demoPhoto('領口特寫', '#6b8cbf')
-    ],
-    description: 'GORE-TEX 三層布，輕量好收納。\n帽子可調整，適合戴安全帽。',
+    photos: [],
+    description: 'GORE-TEX 三層布，輕量好收納。',
     tradeMethods: ['面交', '店到店', '郵寄'],
     meetupLocation: '台中',
     variants: [{ label: 'M', qty: 1 }],
@@ -337,10 +159,7 @@ const products = [
     condition: '全新',
     usage: '全新未拆',
     defects: '',
-    photos: [
-      demoPhoto('正面', '#8a9a5b'),
-      demoPhoto('吊牌', '#6f7d45')
-    ],
+    photos: [],
     description: '中厚款，適合多日行程。',
     tradeMethods: ['面交', '店到店', '郵寄'],
     meetupLocation: '台中',
@@ -382,11 +201,7 @@ const products = [
     condition: '明顯使用痕跡',
     usage: '2021 年購入，走過多次百岳',
     defects: '背板網布有勾紗',
-    photos: [
-      demoPhoto('正面', '#a0522d'),
-      demoPhoto('背板', '#8b4513'),
-      demoPhoto('勾紗特寫', '#b5653a')
-    ],
+    photos: [],
     description: '',
     tradeMethods: ['面交', '郵寄'],
     meetupLocation: '台中',
@@ -469,11 +284,6 @@ function displayStatus(p) {
   return totalQty(p) === 0 ? '已售出' : p.status;
 }
 
-// 這件商品有沒有尺寸（規格名稱全部空白就是沒有）
-function hasSizes(p) {
-  return p.variants.some(v => v.label);
-}
-
 // 尺寸摘要：只列出「還有貨」的尺寸，例如 S 賣完就只顯示「M / L」
 // 全部賣完時才列出所有尺寸；沒有尺寸的商品回傳空字串
 function sizeSummary(p) {
@@ -482,8 +292,9 @@ function sizeSummary(p) {
   return list.map(v => v.label).filter(Boolean).join(' / ');
 }
 
-// 類別圖示（沒有照片時用）
-function iconPhoto(p) {
+// 封面照：有照片用第一張，沒有就用類別圖示
+function coverPhoto(p) {
+  if (p.photos.length > 0) return p.photos[0];
   const icon = CATEGORY_ICON[p.category] || '📦';
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
     <rect width="100" height="100" fill="#e3ece5"/>
@@ -492,27 +303,8 @@ function iconPhoto(p) {
   return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
 }
 
-// 所有照片；沒有照片就給一張類別圖示
-function allPhotos(p) {
-  return p.photos.length > 0 ? p.photos : [iconPhoto(p)];
-}
-
-// 封面照：第一張
-function coverPhoto(p) {
-  return allPhotos(p)[0];
-}
-
-// 跳出「已複製」之類的提示，2 秒後消失
-function showToast(message) {
-  const toast = document.getElementById('toast');
-  toast.textContent = message;
-  toast.classList.add('show');
-  clearTimeout(showToast.timer);
-  showToast.timer = setTimeout(() => toast.classList.remove('show'), 2000);
-}
-
 // =====================================================
-// 列表畫面
+// 畫面
 // =====================================================
 let currentCategory = '全部';
 
@@ -578,278 +370,9 @@ function renderGrid() {
   }).join('');
 }
 
-// =====================================================
-// 商品頁畫面
-// =====================================================
-let currentProduct = null;  // 目前打開的商品
-let selectedVariant = -1;   // 目前選的尺寸（第幾個規格），-1 代表沒有可選的
-
-function renderDetail(p) {
-  currentProduct = p;
-  // 預設選第一個「還有貨」的尺寸
-  selectedVariant = p.variants.findIndex(v => v.qty > 0);
-
-  const status = displayStatus(p);
-  const photos = allPhotos(p);
-  const multi = photos.length > 1;
-
-  // 狀態標籤
-  const statusTag =
-    status === '保留中' ? '<span class="detail-status reserved">保留中</span>' :
-    status === '已售出' ? '<span class="detail-status sold">已售出</span>' : '';
-
-  // 規格表：空白的欄位不顯示
-  const specRows = [
-    ['品牌', p.brand],
-    ['類別', p.category],
-    ['狀況', p.condition],
-    ['使用情形', p.usage],
-    ['瑕疵說明', p.defects],
-    ['交易方式', p.tradeMethods.join('、')],
-    ['面交地點', p.tradeMethods.includes('面交') ? p.meetupLocation : '']
-  ].filter(([, value]) => value);
-
-  // 狀態提醒
-  const notice =
-    status === '已售出' ? '<div class="notice">這件商品已經售出囉，有類似需求也歡迎私訊詢問。</div>' :
-    status === '保留中' ? '<div class="notice reserved">這件商品目前保留中，如果對方取消會再開放購買。</div>' : '';
-
-  // 聯絡按鈕：沒填網址的平台不顯示
-  const c = SITE_SETTINGS.contacts;
-  const socialLinks = [
-    ['line', 'LINE', c.line],
-    ['instagram', 'Instagram', c.instagram],
-    ['facebook', 'Facebook', c.facebook],
-    ['threads', 'Threads', c.threads]
-  ].filter(([, , url]) => url)
-   .map(([cls, label, url]) =>
-     `<a class="${cls}" href="${esc(url)}" target="_blank" rel="noopener">${label}</a>`
-   ).join('');
-
-  document.getElementById('detail-view').innerHTML = `
-    <button class="back-btn" onclick="goBack()">← 返回商品列表</button>
-
-    <div class="detail-layout">
-      <!-- 左欄（手機在上）：照片 -->
-      <div class="gallery-col">
-        <div class="gallery">
-          <div class="gallery-track" id="gallery-track" onscroll="onGalleryScroll()">
-            ${photos.map((src, i) => `<img src="${src}" alt="${esc(p.name)} 照片 ${i + 1}">`).join('')}
-          </div>
-          ${multi ? `
-            <button class="gallery-nav prev" onclick="stepPhoto(-1)" aria-label="上一張">‹</button>
-            <button class="gallery-nav next" onclick="stepPhoto(1)" aria-label="下一張">›</button>
-            <span class="gallery-counter" id="gallery-counter">1 / ${photos.length}</span>
-          ` : ''}
-        </div>
-        ${multi ? `
-          <div class="thumbs" id="thumbs">
-            ${photos.map((src, i) => `<img src="${src}" class="${i === 0 ? 'active' : ''}" onclick="goToPhoto(${i})" alt="">`).join('')}
-          </div>
-        ` : ''}
-      </div>
-
-      <!-- 右欄（手機在下）：資訊 -->
-      <div>
-        ${statusTag}
-        <h2 class="detail-name">${esc(p.name)}</h2>
-        <div class="detail-price">
-          <span class="price">${money(p.price)}</span>
-          ${p.originalPrice ? `<span class="original">原價 ${money(p.originalPrice)}</span>` : ''}
-          ${p.negotiable ? '<span class="tag">可議價</span>' : ''}
-        </div>
-
-        <div id="size-area"></div>
-
-        <dl class="spec">
-          ${specRows.map(([label, value]) => `<dt>${label}</dt><dd>${esc(value)}</dd>`).join('')}
-        </dl>
-
-        ${p.description ? `<div class="description">${esc(p.description)}</div>` : ''}
-
-        ${notice}
-
-        <div class="contact">
-          <h3>想購買或詢問？</h3>
-          <p>先按下方按鈕複製商品資訊，再貼到任一平台私訊我。</p>
-          <button class="copy-btn" onclick="copyProductInfo()">📋 複製商品資訊</button>
-          <div class="social">${socialLinks}</div>
-          <details class="notes">
-            <summary>購買須知</summary>
-            <div>${esc(SITE_SETTINGS.purchaseNotes)}</div>
-          </details>
-        </div>
-      </div>
-    </div>
-  `;
-
-  renderSizeArea();
-  document.title = `${p.name}｜登山二手小舖`;
-}
-
-// 尺寸區：有尺寸就顯示按鈕；沒有尺寸但數量大於 1 就顯示剩幾件
-function renderSizeArea() {
-  const p = currentProduct;
-  const area = document.getElementById('size-area');
-
-  if (hasSizes(p)) {
-    const chosen = p.variants[selectedVariant];
-    area.innerHTML = `
-      <p class="section-label">尺寸</p>
-      <div class="sizes">
-        ${p.variants.map((v, i) => `
-          <button class="size-btn ${i === selectedVariant ? 'active' : ''}"
-                  ${v.qty === 0 ? 'disabled' : ''}
-                  onclick="selectVariant(${i})">${esc(v.label)}</button>
-        `).join('')}
-      </div>
-      ${chosen ? `<p class="stock-note">${esc(chosen.label)} 剩 ${chosen.qty} 件</p>` : ''}
-    `;
-  } else if (totalQty(p) > 1) {
-    area.innerHTML = `<p class="stock-note">剩 ${totalQty(p)} 件</p>`;
-  } else {
-    area.innerHTML = '';
-  }
-}
-
-function selectVariant(i) {
-  selectedVariant = i;
-  renderSizeArea();
-}
-
-// ----- 照片輪播 -----
-function currentPhotoIndex() {
-  const track = document.getElementById('gallery-track');
-  return Math.round(track.scrollLeft / track.clientWidth);
-}
-
-function goToPhoto(i) {
-  const track = document.getElementById('gallery-track');
-  track.scrollTo({ left: i * track.clientWidth, behavior: 'smooth' });
-}
-
-function stepPhoto(direction) {
-  const count = allPhotos(currentProduct).length;
-  const next = (currentPhotoIndex() + direction + count) % count; // 最後一張再按會回到第一張
-  goToPhoto(next);
-}
-
-// 滑動照片時，更新右下角的「1 / 3」和縮圖框
-function onGalleryScroll() {
-  const counter = document.getElementById('gallery-counter');
-  if (!counter) return; // 只有一張照片時沒有這些元素
-  const i = currentPhotoIndex();
-  counter.textContent = `${i + 1} / ${allPhotos(currentProduct).length}`;
-  document.querySelectorAll('#thumbs img').forEach((img, j) => {
-    img.classList.toggle('active', j === i);
-  });
-}
-
-// ----- 複製商品資訊 -----
-function copyProductInfo() {
-  const p = currentProduct;
-  const link = location.href.split('#')[0] + '#product/' + p.id;
-  const chosen = hasSizes(p) ? p.variants[selectedVariant] : null;
-
-  const text = [
-    '【商品詢問】',
-    p.name,
-    chosen ? `尺寸：${chosen.label}` : '',
-    `售價：${money(p.price)}`,
-    link
-  ].filter(Boolean).join('\n');
-
-  // 新式複製方法；不支援的瀏覽器改用舊方法
-  if (navigator.clipboard && window.isSecureContext) {
-    navigator.clipboard.writeText(text)
-      .then(() => showToast('已複製！貼到私訊給我就好'))
-      .catch(() => fallbackCopy(text));
-  } else {
-    fallbackCopy(text);
-  }
-}
-
-function fallbackCopy(text) {
-  const box = document.createElement('textarea');
-  box.value = text;
-  box.style.position = 'fixed';
-  box.style.opacity = '0';
-  document.body.appendChild(box);
-  box.select();
-  try {
-    document.execCommand('copy');
-    showToast('已複製！貼到私訊給我就好');
-  } catch (e) {
-    showToast('複製失敗，請手動截圖或複製網址');
-  }
-  box.remove();
-}
-
-// =====================================================
-// 換頁：看網址 # 後面是什麼，決定顯示列表還是商品頁
-//   #product/p001 → 商品頁
-//   其他          → 列表
-// =====================================================
-let currentView = '';        // 目前顯示的畫面：'list' 或 'detail'（剛打開網頁時是空的）
-let listScrollY = 0;        // 離開列表時記住捲到哪裡，回來時恢復
-let openedFromList = false; // 是不是從列表點進來的（決定「返回」怎麼做）
-
-function router() {
-  const listView = document.getElementById('list-view');
-  const detailView = document.getElementById('detail-view');
-  const match = location.hash.match(/^#product\/(.+)$/);
-
-  if (match) {
-    const id = decodeURIComponent(match[1]);
-    const p = products.find(x => x.id === id);
-
-    // 從列表進來：先記住列表捲到哪裡
-    // （直接打開分享連結時 currentView 是空的，就不算從列表進來）
-    if (currentView === 'list') {
-      listScrollY = window.scrollY;
-      openedFromList = true;
-    }
-
-    if (p) {
-      renderDetail(p);
-    } else {
-      detailView.innerHTML = `
-        <button class="back-btn" onclick="goBack()">← 返回商品列表</button>
-        <p class="empty">找不到這件商品，可能已經下架了。</p>
-      `;
-    }
-    listView.hidden = true;
-    detailView.hidden = false;
-    window.scrollTo(0, 0);
-    currentView = 'detail';
-  } else {
-    detailView.hidden = true;
-    listView.hidden = false;
-    document.title = '登山二手小舖';
-    // 從商品頁回來 → 回到剛才捲到的位置；本來就在列表（例如按店名）→ 回到最上面
-    window.scrollTo(0, currentView === 'detail' ? listScrollY : 0);
-    openedFromList = false;
-    currentView = 'list';
-  }
-}
-
-// 「返回商品列表」：
-// 從列表點進來的 → 跟瀏覽器的上一頁一樣
-// 直接從分享連結打開的 → 沒有上一頁可回，直接換到列表
-function goBack() {
-  if (openedFromList) {
-    history.back();
-  } else {
-    location.hash = '';
-  }
-}
-
-window.addEventListener('hashchange', router);
-
 // 啟動
 renderFilters();
 renderGrid();
-router();
 </script>
 </body>
 </html>
