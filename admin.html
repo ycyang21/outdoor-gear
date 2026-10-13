@@ -115,6 +115,63 @@
 
   .empty-list { text-align: center; color: var(--muted); padding: 32px 0; }
 
+  /* ===== 售出紀錄 ===== */
+  .back-link {
+    background: none; border: none; color: var(--brand); font-family: inherit;
+    font-size: 15px; cursor: pointer; padding: 4px 0; margin-bottom: 8px;
+  }
+  .sales-product { display: flex; gap: 12px; align-items: center; margin: 4px 0 18px; }
+  .sale-row {
+    display: flex; justify-content: space-between; align-items: flex-start; gap: 12px;
+    padding: 10px 0; border-top: 1px solid var(--line);
+  }
+  .sale-row:first-child { border-top: none; }
+  .sale-main { font-size: 15px; }
+  .sale-amount { font-weight: 700; color: var(--brand); }
+
+  /* ===== 統計 ===== */
+  .stats-title { font-size: 15px; margin-bottom: 12px; }
+  .stat-tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .stat-tile { background: var(--bg); border-radius: 10px; padding: 10px 12px; min-width: 0; }
+  .stat-label { font-size: 12px; color: var(--muted); }
+  .stat-value { font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .stat-unit { font-size: 12px; color: var(--muted); font-weight: 400; margin-left: 2px; }
+
+  /* 每日訪客長條圖 */
+  .bar-chart { position: relative; margin-top: 28px; }
+  .bars { display: flex; align-items: flex-end; gap: 2px; height: 120px; border-bottom: 1px solid var(--line); }
+  .bar {
+    position: relative; flex: 1; height: 100%;
+    display: flex; align-items: flex-end;
+    background: none; border: none; padding: 0; cursor: pointer;
+  }
+  .bar-fill { width: 100%; background: var(--brand); border-radius: 4px 4px 0 0; }
+  .bar:hover .bar-fill, .bar:focus-visible .bar-fill, .bar.active .bar-fill { background: #2c4d38; }
+  .bar:focus-visible { outline: 2px solid var(--brand-light); }
+  .bar-value {
+    position: absolute; left: 50%; transform: translateX(-50%);
+    font-size: 11px; font-weight: 600; color: var(--text); white-space: nowrap;
+  }
+  .bar-axis { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); margin-top: 4px; }
+  .bar-tip {
+    position: absolute; transform: translate(-50%, -100%);
+    background: var(--text); color: #fff; font-size: 12px; padding: 3px 8px; border-radius: 6px;
+    white-space: nowrap; pointer-events: none; z-index: 2;
+  }
+
+  /* 各商品表現 */
+  .pstat { display: grid; grid-template-columns: 44px 1fr; gap: 8px 10px; padding: 12px 0; border-top: 1px solid var(--line); }
+  .pstat:first-child { border-top: none; padding-top: 0; }
+  .pstat img { width: 44px; height: 44px; border-radius: 8px; object-fit: cover; background: var(--brand-light); }
+  .pstat-name { font-weight: 600; font-size: 14px; line-height: 1.35; }
+  .pstat-sub { font-size: 12px; color: var(--muted); }
+  .pstat-metrics { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; text-align: center; }
+  .pstat-metrics div { background: var(--bg); border-radius: 8px; padding: 6px 2px; min-width: 0; }
+  .pstat-metrics b { display: block; font-size: 15px; font-variant-numeric: tabular-nums; }
+  .pstat-metrics span { font-size: 11px; color: var(--muted); }
+  .stats-notes ul { padding-left: 18px; font-size: 13px; color: var(--muted); }
+  .stats-notes li { margin-bottom: 4px; }
+
   details.demo summary { cursor: pointer; font-weight: 600; }
   details.demo[open] summary { margin-bottom: 12px; }
 
@@ -124,7 +181,7 @@
   .req { color: var(--danger); }
   .hint { font-size: 12px; color: var(--muted); margin-top: 4px; }
 
-  input[type="text"], input[type="number"], select, textarea {
+  input[type="text"], input[type="number"], input[type="date"], select, textarea {
     width: 100%; padding: 10px 12px;
     border: 1px solid var(--line); border-radius: 8px;
     font-size: 16px; /* 16px 以上，iPhone 點輸入框時才不會自動放大畫面 */
@@ -244,6 +301,7 @@
     <!-- ===== 分頁切換 ===== -->
     <nav class="tabs" id="tabs">
       <button type="button" class="tab active" data-tab="products">商品管理</button>
+      <button type="button" class="tab" data-tab="stats">統計</button>
       <button type="button" class="tab" data-tab="settings">全站設定</button>
     </nav>
 
@@ -266,6 +324,98 @@
         <p id="demo-result" class="result" hidden></p>
       </details>
     </div>
+
+    <!-- ===== 售出紀錄（從商品清單的「售出」按鈕進來） ===== -->
+    <section id="sales-page" class="panel" hidden>
+      <button type="button" class="back-link" id="sales-back">← 返回商品管理</button>
+      <h2>售出紀錄</h2>
+      <div class="sales-product">
+        <img id="sales-thumb" class="item-thumb" alt="">
+        <div>
+          <div id="sales-name" class="item-name"></div>
+          <div id="sales-stock" class="item-meta"></div>
+        </div>
+      </div>
+
+      <form id="sale-form" novalidate>
+        <p class="settings-section">記一筆售出</p>
+        <div id="sale-error" class="error" hidden></div>
+        <p id="sale-reserved-note" class="hint" hidden>這件商品目前是「保留中」。記錄售出後如果還有庫存，會自動改回「販售中」。</p>
+        <div class="row2">
+          <div class="field">
+            <label class="field-label" for="sale-date">日期</label>
+            <input type="date" id="sale-date">
+          </div>
+          <div class="field" id="sale-variant-field">
+            <label class="field-label" for="sale-variant">尺寸</label>
+            <select id="sale-variant"></select>
+          </div>
+        </div>
+        <div class="row2">
+          <div class="field">
+            <label class="field-label" for="sale-qty">數量</label>
+            <input type="number" id="sale-qty" inputmode="numeric" min="1" step="1">
+          </div>
+          <div class="field">
+            <label class="field-label" for="sale-amount">成交金額（總額）</label>
+            <input type="number" id="sale-amount" inputmode="numeric" min="0" step="1">
+          </div>
+        </div>
+        <div class="field">
+          <label class="field-label" for="sale-buyer">買家（選填）</label>
+          <input type="text" id="sale-buyer" placeholder="例：IG 帳號或名字">
+        </div>
+        <div class="field">
+          <label class="field-label" for="sale-note">備註（選填）</label>
+          <input type="text" id="sale-note" placeholder="例：7-11 店到店、已收款">
+        </div>
+        <button type="submit" id="sale-submit" class="btn primary">記錄售出</button>
+      </form>
+      <p id="sale-soldout" class="muted" hidden>這件商品已經全部售出。要再賣的話，請到「編輯」把數量加回去。</p>
+
+      <p class="settings-section" style="border-top: 1px solid var(--line); padding-top: 16px; margin-top: 20px;">歷史紀錄</p>
+      <p id="sales-summary" class="muted"></p>
+      <div id="sales-list"></div>
+      <p class="hint">這些資料只有你看得到，買家看不到成交金額和買家資料。刪除紀錄時，數量會自動加回庫存。</p>
+    </section>
+
+    <!-- ===== 統計 ===== -->
+    <section id="stats-page" hidden>
+      <div class="page-head">
+        <h2>統計</h2>
+        <button type="button" id="stats-refresh" class="btn small">重新整理</button>
+      </div>
+      <div id="stats-error" class="error" hidden></div>
+
+      <div class="panel">
+        <h3 class="stats-title">網站訪客</h3>
+        <div class="stat-tiles" id="visitor-tiles"></div>
+        <div class="bar-chart" id="visitor-chart"></div>
+      </div>
+
+      <div class="panel">
+        <h3 class="stats-title">銷售</h3>
+        <div class="stat-tiles" id="sales-tiles"></div>
+      </div>
+
+      <div class="panel">
+        <h3 class="stats-title">各商品表現（累計）</h3>
+        <div id="product-stats"></div>
+      </div>
+
+      <details class="panel demo stats-notes">
+        <summary>這些數字怎麼算？</summary>
+        <ul>
+          <li>訪客、瀏覽、詢問都是「人次」：同一台裝置每天只算一次，重新整理不會重複計算。</li>
+          <li>詢問＝買家按了「複製商品資訊」、LINE 或 Instagram 任一個按鈕。按了不代表一定有傳訊息給你。</li>
+          <li>詢問率＝詢問 ÷ 瀏覽；轉單率＝成交筆數 ÷ 瀏覽。</li>
+          <li>成交來自你在「售出」記錄的資料。</li>
+          <li>這台裝置登入過後台，你自己的瀏覽不會被計入。換新手機或電腦時，先登入一次後台就好。</li>
+          <li>數字是概略值：買家清除瀏覽器資料或用無痕模式，會被當成新的訪客。</li>
+          <li>統計從這個版本上線之後才開始累計。</li>
+        </ul>
+      </details>
+    </section>
 
     <!-- ===== 全站設定 ===== -->
     <form id="settings-form" class="panel" hidden novalidate>
@@ -357,7 +507,7 @@
         <div class="variant-head"><span>尺寸／顏色</span><span>數量</span><span></span></div>
         <div id="variant-rows"></div>
         <button type="button" id="add-variant-btn" class="btn small">＋ 新增尺寸</button>
-        <p class="hint">沒有尺寸的商品（例如帳篷、炊具），尺寸留空、只填數量就好。</p>
+        <p class="hint">沒有尺寸的商品（例如帳篷、炊具），尺寸留空、只填數量就好。賣出時請用商品清單上的「售出」按鈕記錄，數量會自動扣掉。</p>
       </div>
 
       <div class="field">
@@ -436,7 +586,8 @@ import {
   getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut
 } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js';
 import {
-  getFirestore, collection, doc, getDoc, getDocs, setDoc, updateDoc, writeBatch, deleteField
+  getFirestore, collection, doc, getDoc, getDocs, setDoc, updateDoc, writeBatch, deleteField,
+  runTransaction, query, where, documentId
 } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
 import {
   getStorage, ref, uploadBytes, getDownloadURL, deleteObject
@@ -549,7 +700,11 @@ function explainError(err) {
     'storage/quota-exceeded':
       'Storage 用量超過上限，請檢查 Firebase 的方案和用量。',
     'storage/retry-limit-exceeded':
-      '上傳逾時，請確認網路穩定後再試一次。'
+      '上傳逾時，請確認網路穩定後再試一次。',
+    'not-enough-stock':
+      '庫存不夠（可能剛剛已經記錄過了），上方庫存已更新成最新數字。',
+    'product-missing':
+      '找不到這件商品，可能已經被刪除。'
   };
   return messages[err.code] || `發生錯誤：${err.code || err.message}`;
 }
@@ -593,6 +748,8 @@ onAuthStateChanged(auth, user => {
   } else {
     $('user-email').textContent = user.email;
     $('admin-view').hidden = false;
+    // 這台裝置是你的，前台的瀏覽統計不要算到你
+    try { localStorage.setItem('statsSkip', '1'); } catch { /* 存不了也沒關係 */ }
     switchTab('products', true);
     loadProducts();
     loadSettings();
@@ -647,6 +804,7 @@ function renderList() {
         </div>
         <div class="item-actions">
           <button class="btn small" data-action="edit" data-id="${esc(p.id)}">編輯</button>
+          <button class="btn small" data-action="sales" data-id="${esc(p.id)}">售出</button>
           <a class="btn small" href="./#product/${esc(p.id)}" target="_blank">前台 ↗</a>
           <button class="btn small danger" data-action="delete" data-id="${esc(p.id)}">刪除</button>
         </div>
@@ -663,6 +821,7 @@ $('admin-list').addEventListener('click', e => {
   if (!p) return;
   if (btn.dataset.action === 'edit') openForm(p);
   if (btn.dataset.action === 'delete') deleteProduct(p);
+  if (btn.dataset.action === 'sales') openSales(p);
 });
 
 async function deleteProduct(p) {
@@ -672,6 +831,7 @@ async function deleteProduct(p) {
     const batch = writeBatch(db);
     batch.delete(doc(db, 'products', p.id));
     batch.delete(doc(db, 'productPrivate', p.id));
+    batch.delete(doc(db, 'productStats', p.id));
     await batch.commit();
     // 資料刪掉之後，再把照片檔案從 Storage 清掉
     deleteStoredPhotos([...(p.photos || []), ...(p.thumbs || [])]);
@@ -786,6 +946,7 @@ function openForm(p) {
 function showListPage() {
   clearNewPhotoPreviews();
   $('product-form').hidden = true;
+  $('sales-page').hidden = true;
   $('tabs').hidden = false;
   $('products-page').hidden = false;
   window.scrollTo(0, 0);
@@ -1096,7 +1257,446 @@ $('product-form').addEventListener('submit', async e => {
 });
 
 // =====================================================
-// 分頁切換：商品管理／全站設定
+// 售出紀錄
+// 存在 productPrivate/{商品編號} 的 sales 清單裡，只有你讀得到
+// =====================================================
+let salesProduct = null;  // 目前在看哪一件商品
+let salesRecords = [];    // 這件商品的售出紀錄
+let amountTouched = false; // 成交金額是不是你自己改過（沒改過就自動帶入 售價 × 數量）
+
+function todayLocal() {
+  return nowLocalISO().slice(0, 10);
+}
+
+function newId() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+}
+
+function codeError(code) {
+  const err = new Error(code);
+  err.code = code;
+  return err;
+}
+
+function stockText(p) {
+  const variants = p.variants || [];
+  if (totalQty(p) === 0) return '已全部售出';
+  return variants.some(v => v.label)
+    ? '庫存：' + variants.map(v => `${v.label}×${v.qty}`).join('、')
+    : `庫存：${totalQty(p)} 件`;
+}
+
+function openSales(p) {
+  salesProduct = p;
+  $('tabs').hidden = true;
+  $('products-page').hidden = true;
+  $('sales-page').hidden = false;
+  window.scrollTo(0, 0);
+  renderSalesHeader();
+  resetSaleForm();
+  $('sales-summary').textContent = '';
+  $('sales-list').innerHTML = '<p class="muted">讀取中…</p>';
+  loadSales();
+}
+
+$('sales-back').addEventListener('click', () => {
+  showListPage();
+  loadProducts(); // 庫存可能變了，重新讀一次
+});
+
+async function loadSales() {
+  try {
+    const snap = await getDoc(doc(db, 'productPrivate', salesProduct.id));
+    salesRecords = snap.exists() ? (snap.data().sales || []) : [];
+    renderSalesList();
+  } catch (err) {
+    $('sales-list').innerHTML = `<p class="error">${esc(explainError(err))}</p>`;
+  }
+}
+
+function renderSalesHeader() {
+  const p = salesProduct;
+  $('sales-thumb').src = (p.thumbs && p.thumbs[0]) || (p.photos && p.photos[0]) || iconPhoto(p.category);
+  $('sales-name').textContent = p.name;
+  $('sales-stock').textContent = stockText(p);
+
+  const soldOut = totalQty(p) === 0;
+  $('sale-form').hidden = soldOut;
+  $('sale-soldout').hidden = !soldOut;
+  $('sale-reserved-note').hidden = p.status !== '保留中';
+
+  // 尺寸選單：只有一個沒名字的規格（沒有尺寸的商品）就藏起來
+  const variants = p.variants || [];
+  const hasSizes = variants.some(v => v.label);
+  $('sale-variant-field').hidden = !hasSizes;
+  $('sale-variant').innerHTML = variants.map(v => `
+    <option value="${esc(v.label)}" ${v.qty > 0 ? '' : 'disabled'}>
+      ${esc(v.label || '（不分尺寸）')}（剩 ${v.qty}）
+    </option>
+  `).join('');
+  const firstInStock = variants.find(v => v.qty > 0);
+  if (firstInStock) $('sale-variant').value = firstInStock.label;
+}
+
+function resetSaleForm() {
+  $('sale-error').hidden = true;
+  $('sale-date').value = todayLocal();
+  $('sale-qty').value = 1;
+  $('sale-buyer').value = '';
+  $('sale-note').value = '';
+  amountTouched = false;
+  autoFillAmount();
+}
+
+function autoFillAmount() {
+  if (amountTouched) return;
+  const qty = Number($('sale-qty').value) || 0;
+  $('sale-amount').value = (salesProduct.price || 0) * qty;
+}
+
+$('sale-qty').addEventListener('input', autoFillAmount);
+$('sale-amount').addEventListener('input', () => { amountTouched = true; });
+
+function renderSalesList() {
+  const total = salesRecords.reduce((sum, s) => sum + (Number(s.amount) || 0), 0);
+  const units = salesRecords.reduce((sum, s) => sum + (Number(s.qty) || 0), 0);
+  $('sales-summary').textContent = salesRecords.length
+    ? `共 ${salesRecords.length} 筆、${units} 件，合計 ${money(total)}`
+    : '';
+
+  if (salesRecords.length === 0) {
+    $('sales-list').innerHTML = '<p class="muted">還沒有售出紀錄。</p>';
+    return;
+  }
+
+  // 新的在上面
+  const sorted = [...salesRecords].sort((a, b) =>
+    String(b.date).localeCompare(String(a.date)) || String(b.createdAt).localeCompare(String(a.createdAt)));
+
+  $('sales-list').innerHTML = sorted.map(s => {
+    const extra = [s.buyer ? `買家：${s.buyer}` : '', s.note].filter(Boolean).join('・');
+    return `
+      <div class="sale-row">
+        <div>
+          <div class="sale-main">
+            ${esc(s.date)}・${s.variant ? esc(s.variant) + ' ' : ''}× ${s.qty}・<span class="sale-amount">${money(s.amount)}</span>
+          </div>
+          ${extra ? `<div class="item-meta">${esc(extra)}</div>` : ''}
+        </div>
+        <button type="button" class="btn small danger" data-sale-del="${esc(s.id)}">刪除</button>
+      </div>
+    `;
+  }).join('');
+}
+
+// 記錄一筆售出：同時扣庫存，兩件事要嘛都成功、要嘛都不做（交易 transaction）
+$('sale-form').addEventListener('submit', async e => {
+  e.preventDefault();
+  const p = salesProduct;
+  const label = $('sale-variant-field').hidden ? ((p.variants || [])[0] || {}).label || '' : $('sale-variant').value;
+  const variant = (p.variants || []).find(v => (v.label || '') === label);
+  const qty = Number($('sale-qty').value);
+  const amountRaw = $('sale-amount').value.trim();
+  const amount = Number(amountRaw);
+  const date = $('sale-date').value;
+
+  const errors = [];
+  if (!date) errors.push('請選擇日期');
+  if (!Number.isInteger(qty) || qty < 1) errors.push('數量請填 1 以上的整數');
+  else if (!variant || qty > variant.qty) errors.push(`庫存不夠，目前只剩 ${variant ? variant.qty : 0} 件`);
+  if (amountRaw === '' || !Number.isInteger(amount) || amount < 0) errors.push('成交金額請填 0 以上的整數');
+  if (errors.length) {
+    $('sale-error').textContent = errors.join('\n');
+    $('sale-error').hidden = false;
+    return;
+  }
+  $('sale-error').hidden = true;
+
+  const sale = {
+    id: newId(), date, variant: label, qty, amount,
+    buyer: $('sale-buyer').value.trim(),
+    note: $('sale-note').value.trim(),
+    createdAt: nowLocalISO()
+  };
+
+  $('sale-submit').disabled = true;
+  try {
+    const updated = await runTransaction(db, async t => {
+      const productRef = doc(db, 'products', p.id);
+      const privateRef = doc(db, 'productPrivate', p.id);
+      const productSnap = await t.get(productRef);
+      const privateSnap = await t.get(privateRef);
+      if (!productSnap.exists()) throw codeError('product-missing');
+
+      const data = productSnap.data();
+      const variants = (data.variants || []).map(v => ({ ...v }));
+      const target = variants.find(v => (v.label || '') === label);
+      if (!target || (Number(target.qty) || 0) < qty) throw codeError('not-enough-stock');
+      target.qty = Number(target.qty) - qty;
+
+      const update = { variants, updatedAt: nowLocalISO() };
+      const remaining = variants.reduce((sum, v) => sum + (Number(v.qty) || 0), 0);
+      if (data.status === '保留中' && remaining > 0) update.status = '販售中';
+
+      const sales = privateSnap.exists() ? (privateSnap.data().sales || []) : [];
+      t.update(productRef, update);
+      t.set(privateRef, { sales: [...sales, sale] }, { merge: true });
+      return { ...data, ...update, id: p.id };
+    });
+
+    salesProduct = updated;
+    salesRecords = [...salesRecords, sale];
+    renderSalesHeader();
+    renderSalesList();
+    resetSaleForm();
+    showToast('已記錄售出');
+  } catch (err) {
+    $('sale-error').textContent = '記錄失敗：' + explainError(err);
+    $('sale-error').hidden = false;
+    // 庫存跟畫面上不一樣時，重新讀一次最新庫存
+    if (err.code === 'not-enough-stock') {
+      try {
+        const snap = await getDoc(doc(db, 'products', p.id));
+        if (snap.exists()) {
+          salesProduct = { id: p.id, ...snap.data() };
+          renderSalesHeader();
+        }
+      } catch { /* 讀不到就算了，錯誤訊息已經顯示 */ }
+    }
+  } finally {
+    $('sale-submit').disabled = false;
+  }
+});
+
+// 刪除一筆紀錄：數量加回原本的尺寸
+$('sales-list').addEventListener('click', async e => {
+  const btn = e.target.closest('[data-sale-del]');
+  if (!btn) return;
+  const sale = salesRecords.find(s => s.id === btn.dataset.saleDel);
+  if (!sale) return;
+  if (!confirm(`要刪除這筆紀錄嗎？${sale.qty} 件會加回庫存。`)) return;
+
+  btn.disabled = true;
+  try {
+    const result = await runTransaction(db, async t => {
+      const productRef = doc(db, 'products', salesProduct.id);
+      const privateRef = doc(db, 'productPrivate', salesProduct.id);
+      const productSnap = await t.get(productRef);
+      const privateSnap = await t.get(privateRef);
+      if (!productSnap.exists()) throw codeError('product-missing');
+
+      const data = productSnap.data();
+      const variants = (data.variants || []).map(v => ({ ...v }));
+      const target = variants.find(v => (v.label || '') === (sale.variant || ''));
+      if (target) {
+        target.qty = (Number(target.qty) || 0) + sale.qty;
+        t.update(productRef, { variants, updatedAt: nowLocalISO() });
+      }
+      const sales = (privateSnap.exists() ? (privateSnap.data().sales || []) : []).filter(s => s.id !== sale.id);
+      t.set(privateRef, { sales }, { merge: true });
+      return { product: target ? { ...data, variants, id: salesProduct.id } : { ...data, id: salesProduct.id }, sales, restored: !!target };
+    });
+
+    salesProduct = result.product;
+    salesRecords = result.sales;
+    renderSalesHeader();
+    renderSalesList();
+    showToast(result.restored ? '已刪除，數量已加回庫存' : '已刪除（找不到原本的尺寸，數量沒有加回）');
+  } catch (err) {
+    alert('刪除失敗：' + explainError(err));
+    btn.disabled = false;
+  }
+});
+
+// =====================================================
+// 統計
+// =====================================================
+
+// 往前或往後數 n 天的日期，例如 dayKey(-6) 是 6 天前
+function dayKey(offset = 0) {
+  const d = new Date();
+  d.setDate(d.getDate() + offset);
+  const pad = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+function percent(part, whole) {
+  if (!whole) return '—';
+  const v = (part / whole) * 100;
+  return (v < 10 && v > 0 ? v.toFixed(1) : Math.round(v)) + '%';
+}
+
+function tile(label, value, unit = '') {
+  return `
+    <div class="stat-tile">
+      <div class="stat-label">${label}</div>
+      <div class="stat-value">${value}${unit ? `<span class="stat-unit">${unit}</span>` : ''}</div>
+    </div>
+  `;
+}
+
+async function loadStats() {
+  $('stats-error').hidden = true;
+  $('visitor-tiles').innerHTML = '<p class="muted">讀取中…</p>';
+  $('visitor-chart').innerHTML = '';
+  $('sales-tiles').innerHTML = '';
+  $('product-stats').innerHTML = '';
+  try {
+    const [dailySnap, productStatsSnap, privateSnap] = await Promise.all([
+      getDocs(query(collection(db, 'statsDaily'), where(documentId(), '>=', dayKey(-29)))),
+      getDocs(collection(db, 'productStats')),
+      getDocs(collection(db, 'productPrivate'))
+    ]);
+    if (products.length === 0) await loadProducts();
+
+    const daily = {};
+    dailySnap.docs.forEach(d => { daily[d.id] = d.data(); });
+    const productStats = {};
+    productStatsSnap.docs.forEach(d => { productStats[d.id] = d.data(); });
+    const salesById = {};
+    privateSnap.docs.forEach(d => { salesById[d.id] = d.data().sales || []; });
+
+    renderVisitorStats(daily);
+    renderSalesStats(salesById);
+    renderProductStats(productStats, salesById);
+  } catch (err) {
+    $('visitor-tiles').innerHTML = '';
+    $('stats-error').textContent = '讀取統計失敗：' + explainError(err);
+    $('stats-error').hidden = false;
+  }
+}
+
+$('stats-refresh').addEventListener('click', loadStats);
+
+function visitorsOn(daily, key) {
+  return Number((daily[key] || {}).visitors) || 0;
+}
+
+function renderVisitorStats(daily) {
+  const sumDays = n => Array.from({ length: n }, (_, i) => visitorsOn(daily, dayKey(-i))).reduce((a, b) => a + b, 0);
+  $('visitor-tiles').innerHTML =
+    tile('今天', visitorsOn(daily, dayKey(0)), '人') +
+    tile('近 7 天', sumDays(7), '人') +
+    tile('近 30 天', sumDays(30), '人');
+
+  // 近 14 天長條圖（最右邊是今天）
+  const days = Array.from({ length: 14 }, (_, i) => dayKey(i - 13));
+  const values = days.map(k => visitorsOn(daily, k));
+  const max = Math.max(1, ...values);
+  const label = k => `${Number(k.slice(5, 7))}/${Number(k.slice(8, 10))}`;
+
+  $('visitor-chart').innerHTML = `
+    <div class="bars" role="img" aria-label="近 14 天每日訪客">
+      ${days.map((k, i) => {
+        const pct = (values[i] / max) * 100;
+        const isToday = i === days.length - 1;
+        return `
+          <button type="button" class="bar" data-tip="${label(k)}：${values[i]} 位訪客" aria-label="${label(k)}，${values[i]} 位訪客">
+            <span class="bar-fill" style="height: ${pct}%"></span>
+            ${isToday ? `<span class="bar-value" style="bottom: calc(${pct}% + 2px)">${values[i]}</span>` : ''}
+          </button>
+        `;
+      }).join('')}
+    </div>
+    <div class="bar-axis"><span>${label(days[0])}</span><span>每日訪客（近 14 天）</span><span>今天</span></div>
+  `;
+}
+
+// 長條圖的提示框：滑鼠移上去、點一下或用鍵盤選到時顯示
+function showBarTip(bar) {
+  const chart = $('visitor-chart');
+  chart.querySelectorAll('.bar.active').forEach(b => b.classList.remove('active'));
+  bar.classList.add('active');
+  let tip = chart.querySelector('.bar-tip');
+  if (!tip) {
+    tip = document.createElement('div');
+    tip.className = 'bar-tip';
+    chart.appendChild(tip);
+  }
+  tip.textContent = bar.dataset.tip;
+  const chartBox = chart.getBoundingClientRect();
+  const barBox = bar.getBoundingClientRect();
+  const fillBox = bar.querySelector('.bar-fill').getBoundingClientRect();
+  const half = tip.offsetWidth / 2;
+  const center = barBox.left - chartBox.left + barBox.width / 2;
+  tip.style.left = Math.min(Math.max(center, half), chartBox.width - half) + 'px';
+  tip.style.top = Math.min(fillBox.top, barBox.bottom - 2) - chartBox.top - 6 + 'px';
+}
+
+function hideBarTip() {
+  const chart = $('visitor-chart');
+  chart.querySelectorAll('.bar.active').forEach(b => b.classList.remove('active'));
+  const tip = chart.querySelector('.bar-tip');
+  if (tip) tip.remove();
+}
+
+$('visitor-chart').addEventListener('pointerover', e => {
+  const bar = e.target.closest('.bar');
+  if (bar) showBarTip(bar);
+});
+$('visitor-chart').addEventListener('click', e => {
+  const bar = e.target.closest('.bar');
+  if (bar) showBarTip(bar);
+});
+$('visitor-chart').addEventListener('focusin', e => {
+  const bar = e.target.closest('.bar');
+  if (bar) showBarTip(bar);
+});
+$('visitor-chart').addEventListener('pointerleave', hideBarTip);
+
+function renderSalesStats(salesById) {
+  const all = Object.values(salesById).flat();
+  const month = todayLocal().slice(0, 7);
+  const thisMonth = all.filter(s => String(s.date).startsWith(month));
+  const sum = list => list.reduce((a, s) => a + (Number(s.amount) || 0), 0);
+  $('sales-tiles').innerHTML =
+    tile('本月成交', thisMonth.length, '筆') +
+    tile('本月營收', sum(thisMonth).toLocaleString('zh-TW'), '元') +
+    tile('累計營收', sum(all).toLocaleString('zh-TW'), '元');
+}
+
+function renderProductStats(productStats, salesById) {
+  if (products.length === 0) {
+    $('product-stats').innerHTML = '<p class="muted">還沒有商品。</p>';
+    return;
+  }
+  const rows = products.map(p => {
+    const s = productStats[p.id] || {};
+    const sales = salesById[p.id] || [];
+    return {
+      p,
+      views: Number(s.views) || 0,
+      inquiries: Number(s.inquiries) || 0,
+      copy: Number(s.copy) || 0,
+      line: Number(s.line) || 0,
+      instagram: Number(s.instagram) || 0,
+      orders: sales.length
+    };
+  }).sort((a, b) => b.views - a.views || b.inquiries - a.inquiries);
+
+  $('product-stats').innerHTML = rows.map(r => {
+    const thumb = (r.p.thumbs && r.p.thumbs[0]) || (r.p.photos && r.p.photos[0]) || iconPhoto(r.p.category);
+    return `
+      <div class="pstat">
+        <img src="${esc(thumb)}" alt="">
+        <div>
+          <div class="pstat-name">${esc(r.p.name)}</div>
+          <div class="pstat-sub">詢問來源：複製 ${r.copy}・LINE ${r.line}・IG ${r.instagram}</div>
+        </div>
+        <div class="pstat-metrics">
+          <div><b>${r.views}</b><span>瀏覽</span></div>
+          <div><b>${r.inquiries}</b><span>詢問</span></div>
+          <div><b>${percent(r.inquiries, r.views)}</b><span>詢問率</span></div>
+          <div><b>${r.orders}</b><span>成交</span></div>
+          <div><b>${percent(r.orders, r.views)}</b><span>轉單率</span></div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+// =====================================================
+// 分頁切換：商品管理／統計／全站設定
 // =====================================================
 let currentTab = 'products';
 
@@ -1110,9 +1710,12 @@ function switchTab(tab, force = false) {
     btn.classList.toggle('active', btn.dataset.tab === tab);
   });
   $('product-form').hidden = true;
+  $('sales-page').hidden = true;
   $('products-page').hidden = tab !== 'products';
+  $('stats-page').hidden = tab !== 'stats';
   $('settings-form').hidden = tab !== 'settings';
   if (tab === 'settings') fillSettingsForm(); // 每次打開都顯示資料庫裡最新的內容
+  if (tab === 'stats') loadStats();
   window.scrollTo(0, 0);
 }
 
@@ -1421,7 +2024,11 @@ $('clear-btn').addEventListener('click', async () => {
   setDemoBusy(true);
   try {
     const batch = writeBatch(db);
-    DEMO_PRODUCTS.forEach(({ id }) => batch.delete(doc(db, 'products', id)));
+    DEMO_PRODUCTS.forEach(({ id }) => {
+      batch.delete(doc(db, 'products', id));
+      batch.delete(doc(db, 'productPrivate', id));
+      batch.delete(doc(db, 'productStats', id));
+    });
     await batch.commit();
     showResult('✅ 示範商品已清除。');
   } catch (err) {
