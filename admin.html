@@ -583,6 +583,7 @@
 
   // ----- 載入失敗時把原因顯示出來，方便找問題 -----
   window.adminErrors = [];
+  window.adminStage = '1. 下載程式中';
   window.addEventListener('error', e => {
     const src = e.target && e.target.src;
     window.adminErrors.push(e.message || (src ? '無法載入：' + src : '未知錯誤'));
@@ -597,7 +598,8 @@
     const box = document.getElementById('error');
     box.textContent =
       '後台載入失敗。請先重新整理一次；如果還是這樣，請把這段訊息截圖給 Claude：\n\n' +
-      (window.adminErrors.join('\n') || '（沒有錯誤訊息，可能是網路被擋住或載入太久）') +
+      '停在：' + window.adminStage + '\n' +
+      (window.adminErrors.join('\n') || '（沒有錯誤訊息）') +
       '\n\n瀏覽器：' + navigator.userAgent;
     box.hidden = false;
   }, 10000);
@@ -606,7 +608,8 @@
 <script type="module" onerror="window.adminErrors.push('程式模組載入失敗（可能是網路問題，或某個 Firebase 檔案下載不到）')">
 import { app } from './firebase-config.js';
 import {
-  getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut
+  initializeAuth, browserLocalPersistence, browserSessionPersistence, browserPopupRedirectResolver,
+  GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut
 } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js';
 import {
   getFirestore, collection, doc, getDoc, getDocs, setDoc, updateDoc, writeBatch, deleteField,
@@ -624,9 +627,17 @@ import {
 // =====================================================
 const OWNER_UID = 'BKZr4zHaPYcJUviYwFEuGBJy5yr1';
 
-const auth = getAuth(app);
+window.adminStage = '2. 程式已下載，啟動登入功能中';
+
+// 登入狀態存在瀏覽器的 localStorage，不用 IndexedDB
+// （iPhone 的瀏覽器偶爾會在開啟 IndexedDB 時卡住，造成後台一直「載入中」）
+const auth = initializeAuth(app, {
+  persistence: [browserLocalPersistence, browserSessionPersistence],
+  popupRedirectResolver: browserPopupRedirectResolver
+});
 const db = getFirestore(app);
 const storage = getStorage(app);
+window.adminStage = '3. 等待登入狀態回應';
 const $ = id => document.getElementById(id);
 
 // 選項清單（類別要跟前台 index.html 的一樣）
@@ -757,6 +768,7 @@ document.querySelectorAll('.logout-btn').forEach(btn => {
 
 // 登入狀態一改變（包含剛打開網頁時），就切換畫面
 onAuthStateChanged(auth, user => {
+  window.adminStage = '4. 完成';
   $('loading').hidden = true;
   $('error').hidden = true; // 正常載入了，就把「載入失敗」的提示收起來
   $('login-view').hidden = true;
