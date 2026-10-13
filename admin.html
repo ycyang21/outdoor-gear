@@ -14,6 +14,10 @@
 <meta name="robots" content="noindex, nofollow">
 <title>後台管理｜Gear Stash</title>
 <link rel="icon" type="image/png" href="favicon.png">
+<!-- 浮水印用的英文字體（和前台店名同一款） -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT,WONK@72,700,100,0&display=swap">
 <style>
   /* 配色跟前台一致 */
   :root {
@@ -120,6 +124,7 @@
   .link-row { display: flex; gap: 8px; }
   .link-row input { flex: 1; min-width: 0; }
   .link-preview { font-size: 12px; color: var(--muted); margin-top: 4px; word-break: break-all; }
+  .wm-preview { display: block; width: 100%; max-width: 360px; height: auto; margin-top: 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--soft); }
   .settings-section { font-size: 13px; font-weight: 700; color: var(--muted); letter-spacing: 0.05em; margin: 4px 0 12px; }
   /* 區塊之間用分隔線 */
   .field + .settings-section { border-top: 1px solid var(--line); padding-top: 16px; }
@@ -517,6 +522,22 @@
         <div id="cat-other"></div>
         <button type="button" id="add-cat-btn" class="btn small">＋ 新增分類</button>
         <p class="hint">由上到下就是前台分類列的順序，<strong>按住左邊的 ≡ 拖曳</strong>可以調整。改名時，原本這個分類的商品會一起改；刪除時，裡面的商品會移到「其他」。「其他」固定在最後，不能刪除。圖示是商品還沒放照片時顯示的小圖，可以貼上任何表情符號。</p>
+      </div>
+
+      <p class="settings-section">照片浮水印</p>
+      <div class="field">
+        <label class="field-label" for="s-wm-text">浮水印文字</label>
+        <input type="text" id="s-wm-text" maxlength="40" placeholder="例：Gear Stash · @trekking_tw">
+        <p class="hint">上傳照片時會自動把這行字加在照片上，避免照片被拿去盜用。留空就不加。<br>只會加在之後新上傳的照片；已經上傳的照片不會改變。</p>
+      </div>
+      <div class="field">
+        <label class="field-label" for="s-wm-pos">位置</label>
+        <select id="s-wm-pos">
+          <option value="corner">右下角（不擋到商品）</option>
+          <option value="center">正中央（比較淡，不容易被裁掉）</option>
+        </select>
+        <canvas id="wm-preview" class="wm-preview" width="640" height="480" aria-label="浮水印預覽"></canvas>
+        <p class="hint">預覽：實際照片上看起來大約是這樣。</p>
       </div>
 
       <div class="form-actions">
@@ -1226,8 +1247,93 @@ function loadImage(file) {
   });
 }
 
-// 等比例縮小到最長邊 maxSide，轉成 JPEG
-function resizeToBlob(img, maxSide, quality) {
+// ----- 浮水印 -----
+const WM_FONT_STACK = '"Fraunces", "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif';
+
+// 目前要用的浮水印。還沒在「全站設定」存過的話，預設是「店名 · @IG帳號」
+function currentWatermark() {
+  const s = siteSettings || SETTINGS_FALLBACK;
+  if (s.watermark) return s.watermark;
+  return { text: defaultWatermarkText(s), position: 'corner' };
+}
+
+function defaultWatermarkText(s) {
+  const shop = s.shopName || 'Gear Stash';
+  const igUrl = (s.contacts && s.contacts.instagram) || '';
+  const ig = urlToInstagramInput(igUrl);
+  const hasIg = ig && !/^https?:/i.test(ig) && !isPlaceholder(igUrl);
+  return hasIg ? `${shop} · @${ig}` : shop;
+}
+
+// 先等字體下載好再畫（最多等 2 秒，網路慢就用手機內建字體）
+async function ensureWatermarkFont(text) {
+  if (!text || !document.fonts) return;
+  try {
+    await Promise.race([
+      document.fonts.load(`700 40px ${WM_FONT_STACK}`, text),
+      new Promise(resolve => setTimeout(resolve, 2000))
+    ]);
+  } catch (err) { /* 字體載入失敗就用內建字體 */ }
+}
+
+// 在畫布上畫浮水印：白字＋淡淡的陰影，深色、淺色照片上都看得到
+function drawWatermark(ctx, w, h, wm) {
+  const text = ((wm && wm.text) || '').trim();
+  if (!text) return;
+  const center = wm.position === 'center';
+  const base = Math.min(w, h);
+  let size = Math.round(base * (center ? 0.085 : 0.05));
+  ctx.save();
+  ctx.font = `700 ${size}px ${WM_FONT_STACK}`;
+  const maxWidth = w * (center ? 0.86 : 0.72); // 字太長就縮小，不會超出照片
+  const width = ctx.measureText(text).width;
+  if (width > maxWidth) {
+    size = Math.max(10, Math.floor(size * maxWidth / width));
+    ctx.font = `700 ${size}px ${WM_FONT_STACK}`;
+  }
+  ctx.textBaseline = 'alphabetic';
+  ctx.textAlign = center ? 'center' : 'right';
+  ctx.globalAlpha = center ? 0.6 : 0.92;
+  const margin = Math.round(base * 0.035);
+  const x = center ? w / 2 : w - margin;
+  const y = center ? h / 2 + size * 0.35 : h - margin;
+  // 先畫一圈淡淡的深色外框＋陰影，白底照片上也看得清楚
+  ctx.lineJoin = 'round';
+  ctx.lineWidth = Math.max(1.5, size * 0.08);
+  ctx.strokeStyle = 'rgba(0, 0, 0, 0.35)';
+  ctx.shadowColor = 'rgba(0, 0, 0, 0.45)';
+  ctx.shadowBlur = Math.max(2, size * 0.25);
+  ctx.strokeText(text, x, y);
+  ctx.shadowColor = 'transparent';
+  ctx.fillStyle = '#ffffff';
+  ctx.fillText(text, x, y);
+  ctx.restore();
+}
+
+// 全站設定裡的浮水印預覽（用封面插畫當背景）
+let wmPreviewBg = null;
+async function drawWatermarkPreview() {
+  const canvas = $('wm-preview');
+  const ctx = canvas.getContext('2d');
+  if (!wmPreviewBg) {
+    wmPreviewBg = new Image();
+    wmPreviewBg.src = 'banner-1200.jpg';
+    await new Promise(resolve => { wmPreviewBg.onload = wmPreviewBg.onerror = resolve; });
+  }
+  const wm = { text: $('s-wm-text').value, position: $('s-wm-pos').value };
+  await ensureWatermarkFont(wm.text.trim());
+  ctx.fillStyle = '#cde0de';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  if (wmPreviewBg.naturalWidth) { // 從插畫中間裁一塊 4:3
+    const bw = wmPreviewBg.naturalWidth, bh = wmPreviewBg.naturalHeight;
+    const sw = Math.min(bw, bh * 4 / 3), sh = sw * 3 / 4;
+    ctx.drawImage(wmPreviewBg, (bw - sw) * 0.62, (bh - sh) / 2, sw, sh, 0, 0, canvas.width, canvas.height);
+  }
+  drawWatermark(ctx, canvas.width, canvas.height, wm);
+}
+
+// 等比例縮小到最長邊 maxSide，轉成 JPEG（有設定浮水印就順便加上）
+function resizeToBlob(img, maxSide, quality, wm) {
   const scale = Math.min(1, maxSide / Math.max(img.naturalWidth, img.naturalHeight));
   const canvas = document.createElement('canvas');
   canvas.width = Math.round(img.naturalWidth * scale);
@@ -1236,6 +1342,7 @@ function resizeToBlob(img, maxSide, quality) {
   ctx.fillStyle = '#fff'; // 透明背景的 PNG 轉成白底
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+  drawWatermark(ctx, canvas.width, canvas.height, wm);
   return new Promise((resolve, reject) => {
     canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error('壓縮失敗')), 'image/jpeg', quality);
   });
@@ -1245,8 +1352,10 @@ async function processPhoto(file) {
   if (!file.type.startsWith('image/')) throw new Error('不是圖片');
   const img = await loadImage(file);
   try {
-    const blob = await resizeToBlob(img, LARGE_SIZE, LARGE_QUALITY);
-    const thumbBlob = await resizeToBlob(img, THUMB_SIZE, THUMB_QUALITY);
+    const wm = currentWatermark();
+    await ensureWatermarkFont(wm.text);
+    const blob = await resizeToBlob(img, LARGE_SIZE, LARGE_QUALITY, wm);
+    const thumbBlob = await resizeToBlob(img, THUMB_SIZE, THUMB_QUALITY, wm);
     return { blob, thumbBlob, preview: URL.createObjectURL(thumbBlob) };
   } finally {
     URL.revokeObjectURL(img.src);
@@ -1984,6 +2093,10 @@ function fillSettingsForm() {
   $('s-instagram').value = urlToInstagramInput(s.contacts.instagram);
   $('s-notes').value = s.purchaseNotes || '';
   loadCategoryRows(s.categories);
+  const wm = currentWatermark();
+  $('s-wm-text').value = wm.text || '';
+  $('s-wm-pos').value = wm.position === 'center' ? 'center' : 'corner';
+  drawWatermarkPreview();
 
   // 還是示範用的假連結時提醒一下
   const placeholders = [];
@@ -2014,10 +2127,12 @@ function setTestLink(el, url) {
   el.style.pointerEvents = ok ? '' : 'none';
 }
 
-$('settings-form').addEventListener('input', () => {
+$('settings-form').addEventListener('input', e => {
   settingsDirty = true;
   updateLinkPreviews();
+  if (e.target.id === 's-wm-text' || e.target.id === 's-wm-pos') drawWatermarkPreview();
 });
+$('s-wm-pos').addEventListener('change', () => { settingsDirty = true; drawWatermarkPreview(); });
 
 // ----- 商品分類編輯 -----
 // catRows：「其他」以外的分類，順序就是畫面上的順序
@@ -2157,7 +2272,11 @@ function readSettingsForm() {
       tagline: $('s-tagline').value.trim(),
       contacts: { line, instagram },
       purchaseNotes: $('s-notes').value.trim(),
-      categories
+      categories,
+      watermark: {
+        text: $('s-wm-text').value.trim(),
+        position: $('s-wm-pos').value === 'center' ? 'center' : 'corner'
+      }
     }
   };
 }
