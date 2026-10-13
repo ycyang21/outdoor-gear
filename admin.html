@@ -89,6 +89,8 @@
     background: #fdf3e7; color: #8a4518; border-radius: 10px;
     padding: 10px 12px; font-size: 14px; margin-bottom: 16px;
   }
+  #inapp-warning p { margin-bottom: 8px; }
+  #inapp-warning .btn-row { margin-top: 4px; }
   .link-row { display: flex; gap: 8px; }
   .link-row input { flex: 1; min-width: 0; }
   .link-preview { font-size: 12px; color: var(--muted); margin-top: 4px; word-break: break-all; }
@@ -271,6 +273,17 @@
   <p id="loading" class="muted">載入中…</p>
 
   <!-- 還沒登入時 -->
+  <!-- 從 LINE／FB／IG 裡點開時的提醒：這些 App 內建的瀏覽器沒辦法用 Google 登入 -->
+  <section id="inapp-warning" class="warn" hidden>
+    <p><strong>請改用 Safari 或 Chrome 打開這一頁</strong></p>
+    <p>你現在是在 <span id="inapp-name">App</span> 裡面開啟的，這種內建瀏覽器沒辦法用 Google 登入。</p>
+    <p>請點右上或右下角的「⋯」選「用預設瀏覽器開啟」，或複製網址貼到 Safari／Chrome。</p>
+    <div class="btn-row">
+      <a id="open-external" class="btn primary" hidden>用瀏覽器開啟</a>
+      <button type="button" id="copy-admin-url" class="btn">複製網址</button>
+    </div>
+  </section>
+
   <section id="login-view" class="panel" hidden>
     <p>請用你的 Google 帳號登入。</p>
     <button id="login-btn" class="btn primary">用 Google 登入</button>
@@ -280,9 +293,13 @@
   <section id="denied-view" class="panel" hidden>
     <h2>沒有管理權限</h2>
     <p>目前登入的帳號 <strong id="denied-email"></strong> 不是這個網站的管理者。</p>
+    <p class="muted">如果你是要協助管理網站的人，請按「複製 UID」，把它傳給站長，開通後就能進入後台。</p>
     <p class="label">這個帳號的 UID</p>
     <code id="denied-uid" class="uid-box"></code>
-    <button class="btn logout-btn">登出</button>
+    <div class="btn-row">
+      <button type="button" id="copy-denied-uid" class="btn primary">複製 UID</button>
+      <button class="btn logout-btn">登出</button>
+    </div>
   </section>
 
   <!-- 管理者登入後 -->
@@ -581,6 +598,38 @@
     box.hidden = false;
   }
 
+  // ----- 偵測是不是在 LINE／FB／IG 的內建瀏覽器裡 -----
+  (function () {
+    const ua = navigator.userAgent;
+    const apps = [
+      [/ Line\//i, 'LINE'],
+      [/FBAN|FBAV|FB_IAB/i, 'Facebook'],
+      [/Instagram/i, 'Instagram'],
+      [/Messenger/i, 'Messenger']
+    ];
+    const hit = apps.find(([re]) => re.test(ua));
+    if (!hit) return;
+    document.getElementById('inapp-name').textContent = hit[1];
+    document.getElementById('inapp-warning').hidden = false;
+    // LINE 支援在網址加上 openExternalBrowser=1，就會改用手機的瀏覽器打開
+    if (hit[1] === 'LINE') {
+      const url = new URL(location.href);
+      url.searchParams.set('openExternalBrowser', '1');
+      const btn = document.getElementById('open-external');
+      btn.href = url.toString();
+      btn.hidden = false;
+    }
+    document.getElementById('copy-admin-url').addEventListener('click', async () => {
+      const clean = location.href.split('?')[0];
+      try {
+        await navigator.clipboard.writeText(clean);
+        document.getElementById('copy-admin-url').textContent = '已複製 ✓';
+      } catch {
+        prompt('請長按複製這個網址：', clean);
+      }
+    });
+  })();
+
   // ----- 載入失敗時把原因顯示出來，方便找問題 -----
   window.adminErrors = [];
   window.adminStage = '1. 下載程式中';
@@ -620,12 +669,16 @@ import {
 } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-storage.js';
 
 // =====================================================
-// 管理者的 UID：要跟 Firestore 規則裡寫的一模一樣
+// 管理者名單：要跟 Firestore 規則、Storage 規則裡寫的一模一樣
+// 要新增或移除管理者時，三個地方都要改
 //
 // 注意：這裡的檢查只是「決定要顯示哪個畫面」。
-// 就算有人改了這行程式碼，資料庫規則還是會擋下他，真正的門鎖在規則裡。
+// 就算有人改了這幾行程式碼，資料庫規則還是會擋下他，真正的門鎖在規則裡。
 // =====================================================
-const OWNER_UID = 'BKZr4zHaPYcJUviYwFEuGBJy5yr1';
+const ADMIN_UIDS = [
+  'BKZr4zHaPYcJUviYwFEuGBJy5yr1', // Julie
+  'u8sq1ud6oKY72XpoDKNt1rnXgRu2'  // 第二位管理者
+];
 
 window.adminStage = '2. 程式已下載，啟動登入功能中';
 
@@ -766,6 +819,16 @@ document.querySelectorAll('.logout-btn').forEach(btn => {
   btn.addEventListener('click', () => signOut(auth));
 });
 
+$('copy-denied-uid').addEventListener('click', async () => {
+  try {
+    await navigator.clipboard.writeText($('denied-uid').textContent);
+    $('copy-denied-uid').textContent = '已複製 ✓';
+    setTimeout(() => { $('copy-denied-uid').textContent = '複製 UID'; }, 2000);
+  } catch {
+    alert('複製失敗，請長按 UID 手動複製');
+  }
+});
+
 // 登入狀態一改變（包含剛打開網頁時），就切換畫面
 onAuthStateChanged(auth, user => {
   window.adminStage = '4. 完成';
@@ -777,7 +840,7 @@ onAuthStateChanged(auth, user => {
 
   if (!user) {
     $('login-view').hidden = false;
-  } else if (user.uid !== OWNER_UID) {
+  } else if (!ADMIN_UIDS.includes(user.uid)) {
     $('denied-email').textContent = user.email;
     $('denied-uid').textContent = user.uid;
     $('denied-view').hidden = false;
