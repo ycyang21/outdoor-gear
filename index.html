@@ -4,17 +4,34 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>登山二手小舖</title>
+<meta name="description" content="自用登山裝備出清：背包、外套、帳篷、炊具等二手好物，歡迎私訊詢問。">
+<meta name="theme-color" content="#254154">
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<!-- 分享連結到 FB、LINE 時顯示的預覽（店名改了的話，這裡的文字要一起改） -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="登山二手小舖">
+<meta property="og:title" content="登山二手小舖">
+<meta property="og:description" content="自用登山裝備出清：背包、外套、帳篷、炊具等二手好物，歡迎私訊詢問。">
+<meta property="og:url" content="https://ycyang21.github.io/outdoor-gear/">
+<meta property="og:image" content="https://ycyang21.github.io/outdoor-gear/og-image.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
 <style>
   /* ===== 顏色與基本設定：想換配色只要改這裡 ===== */
   :root {
-    --bg: #f6f4ef;          /* 頁面底色 */
+    /* 配色取自封面插畫：深藍是插畫的線條色，淺藍綠是天空色 */
+    --bg: #f2f6f5;          /* 頁面底色 */
     --card: #ffffff;        /* 卡片底色 */
-    --text: #2b2a27;        /* 主要文字 */
-    --muted: #7a766d;       /* 次要文字 */
-    --brand: #3f6b4f;       /* 主色（森林綠） */
-    --brand-light: #e3ece5; /* 主色淺色 */
-    --accent: #c8692d;      /* 強調色（保留中） */
-    --line: #e4e0d6;        /* 邊框 */
+    --text: #25313a;        /* 主要文字 */
+    --muted: #5f6e74;       /* 次要文字 */
+    --brand: #254154;       /* 主色（深藍） */
+    --brand-dark: #1a3040;  /* 主色加深（按鈕按下去） */
+    --brand-light: #dbe8e6; /* 主色淺色 */
+    --accent: #b45a1f;      /* 強調色（保留中） */
+    --line: #dde5e3;        /* 邊框 */
+    --soft: #e9eeed;        /* 淺灰底（提示框、停用的按鈕） */
     --radius: 12px;
   }
 
@@ -29,10 +46,34 @@
   }
 
   /* ===== 頁首 ===== */
-  .site-header { background: var(--brand); color: #fff; padding: 18px 0; }
-  .site-header h1 { font-size: 20px; }
-  .site-header p { font-size: 13px; opacity: 0.85; }
+  /* ===== 頁首：封面插畫＋圓形 logo ===== */
+  .hero { background: var(--card); border-bottom: 1px solid var(--line); }
+  .hero-cover {
+    display: block; width: 100%; aspect-ratio: 3 / 1; max-height: 280px; /* 電腦版不要太高，讓商品早一點出現 */
+    object-fit: cover; object-position: center 55%; background: #cde0de;
+  }
+  .hero-brand { display: flex; align-items: flex-end; gap: 12px; padding-bottom: 12px; }
+  .hero-logo {
+    position: relative; flex: 0 0 auto;
+    width: 88px; height: 88px; margin-top: -44px;
+    border-radius: 50%; border: 4px solid var(--card); background: #fff;
+    object-fit: cover; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+  }
+  .hero-text { min-width: 0; padding-bottom: 2px; }
+  .hero-text h1 { font-size: 20px; line-height: 1.3; }
+  .hero-text p { font-size: 13px; color: var(--muted); }
   .home-link { color: inherit; text-decoration: none; }
+  @media (min-width: 700px) {
+    .hero-logo { width: 120px; height: 120px; margin-top: -60px; }
+    .hero-text h1 { font-size: 24px; }
+    .hero-text p { font-size: 14px; }
+  }
+  /* 商品頁：收起封面，只留一排小 logo＋店名，商品照片可以更早出現 */
+  .hero.compact .hero-cover { display: none; }
+  .hero.compact .hero-brand { align-items: center; padding-top: 10px; padding-bottom: 10px; }
+  .hero.compact .hero-logo { width: 40px; height: 40px; margin-top: 0; border: 1px solid var(--line); box-shadow: none; }
+  .hero.compact .hero-text p { display: none; }
+  .hero.compact .hero-text h1 { font-size: 17px; }
 
   /* 內容最寬 1100px，置中；手機左右留 16px */
   .container { max-width: 1100px; margin: 0 auto; padding: 0 16px; }
@@ -132,7 +173,7 @@
     scroll-snap-type: x mandatory;
     scrollbar-width: none;
     border-radius: var(--radius);
-    background: #ece9e2;
+    background: #e6ecea;
   }
   .gallery-track::-webkit-scrollbar { display: none; }
   /* 商品頁的照片完整顯示、不裁切（直的照片左右會留底色） */
@@ -186,7 +227,7 @@
     background: var(--card); color: var(--text); font-size: 15px; cursor: pointer;
   }
   .size-btn.active { border-color: var(--brand); background: var(--brand-light); color: var(--brand); font-weight: 600; }
-  .size-btn:disabled { color: #b5b1a8; background: #f1efea; text-decoration: line-through; cursor: not-allowed; }
+  .size-btn:disabled { color: #a3afb3; background: var(--soft); text-decoration: line-through; cursor: not-allowed; }
   .stock-note { font-size: 13px; color: var(--muted); margin-top: 6px; }
 
   .spec {
@@ -204,7 +245,7 @@
   /* ----- 聯絡區 ----- */
   .notice {
     margin-top: 20px; padding: 10px 14px; border-radius: 10px; font-size: 14px;
-    background: #f1efea; color: var(--muted);
+    background: var(--soft); color: var(--muted);
   }
   .notice.reserved { background: #f8e9de; color: #8a4518; }
 
@@ -231,7 +272,7 @@
   .pill:hover { background: var(--brand-light); }
   /* 複製按鈕是第一步，用實心綠色突顯 */
   .pill.copy { background: var(--brand); color: #fff; }
-  .pill.copy:hover { background: #355c43; }
+  .pill.copy:hover { background: var(--brand-dark); }
 
   /* 窄螢幕手機（例如 iPhone SE）：字和間距稍微縮小，確保三個按鈕擠得下一排 */
   @media (max-width: 380px) {
@@ -265,10 +306,16 @@
 </head>
 <body>
 
-<header class="site-header">
-  <div class="container">
-    <h1><a class="home-link" href="#" id="shop-name">登山二手小舖</a></h1>
-    <p id="shop-tagline">自用裝備出清・歡迎私訊詢問</p>
+<header class="hero" id="hero">
+  <img class="hero-cover" src="banner-1200.jpg"
+       srcset="banner-1200.jpg 1200w, banner-2200.jpg 2200w"
+       sizes="100vw" alt="">
+  <div class="container hero-brand">
+    <a href="#" class="home-link"><img class="hero-logo" src="logo.jpg" alt="店鋪 logo"></a>
+    <div class="hero-text">
+      <h1><a class="home-link" href="#" id="shop-name">登山二手小舖</a></h1>
+      <p id="shop-tagline">自用裝備出清・歡迎私訊詢問</p>
+    </div>
   </div>
 </header>
 
@@ -495,7 +542,7 @@ function sizeSummary(p) {
 function iconPhoto(p) {
   const icon = CATEGORY_ICON[p.category] || '📦';
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-    <rect width="100" height="100" fill="#e3ece5"/>
+    <rect width="100" height="100" fill="#dbe8e6"/>
     <text x="50" y="50" font-size="34" text-anchor="middle" dominant-baseline="central">${icon}</text>
   </svg>`;
   return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
@@ -841,6 +888,7 @@ function router() {
     detailView.hidden = false;
     window.scrollTo(0, 0);
     currentView = 'detail';
+    document.getElementById('hero').classList.add('compact'); // 商品頁收起封面
   } else {
     detailView.hidden = true;
     listView.hidden = false;
@@ -849,6 +897,7 @@ function router() {
     window.scrollTo(0, currentView === 'detail' ? listScrollY : 0);
     openedFromList = false;
     currentView = 'list';
+    document.getElementById('hero').classList.remove('compact');
   }
 }
 
