@@ -6,18 +6,20 @@
 <!-- 請搜尋引擎不要收錄後台頁面 -->
 <meta name="robots" content="noindex, nofollow">
 <title>後台管理｜登山二手小舖</title>
+<link rel="icon" type="image/png" href="favicon.png">
 <style>
   /* 配色跟前台一致 */
   :root {
-    --bg: #f6f4ef;
+    --bg: #f2f6f5;
     --card: #ffffff;
-    --text: #2b2a27;
-    --muted: #7a766d;
-    --brand: #3f6b4f;
-    --brand-light: #e3ece5;
-    --accent: #c8692d;
+    --text: #25313a;
+    --muted: #5f6e74;
+    --brand: #254154;
+    --brand-dark: #1a3040;
+    --brand-light: #dbe8e6;
+    --accent: #b45a1f;
     --danger: #b3261e;
-    --line: #e4e0d6;
+    --line: #dde5e3;
     --radius: 12px;
   }
 
@@ -111,7 +113,7 @@
   .st { display: inline-block; padding: 0 6px; border-radius: 4px; font-size: 12px; font-weight: 600; }
   .st.on-sale { background: var(--brand-light); color: var(--brand); }
   .st.reserved { background: #f8e9de; color: #8a4518; }
-  .st.sold { background: #e8e6e1; color: #555; }
+  .st.sold { background: #e6ebea; color: #4a565b; }
 
   .empty-list { text-align: center; color: var(--muted); padding: 32px 0; }
 
@@ -146,7 +148,7 @@
     background: none; border: none; padding: 0; cursor: pointer;
   }
   .bar-fill { width: 100%; background: var(--brand); border-radius: 4px 4px 0 0; }
-  .bar:hover .bar-fill, .bar:focus-visible .bar-fill, .bar.active .bar-fill { background: #2c4d38; }
+  .bar:hover .bar-fill, .bar:focus-visible .bar-fill, .bar.active .bar-fill { background: var(--brand-dark); }
   .bar:focus-visible { outline: 2px solid var(--brand-light); }
   .bar-value {
     position: absolute; left: 50%; transform: translateX(-50%);
@@ -650,7 +652,7 @@ function displayStatus(p) {
 function iconPhoto(category) {
   const icon = CATEGORY_ICON[category] || '📦';
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-    <rect width="100" height="100" fill="#e3ece5"/>
+    <rect width="100" height="100" fill="#dbe8e6"/>
     <text x="50" y="50" font-size="34" text-anchor="middle" dominant-baseline="central">${icon}</text>
   </svg>`;
   return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
