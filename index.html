@@ -57,6 +57,12 @@
     line-height: 1.5;
   }
 
+  /* 照片防止長按存圖、右鍵另存、拖曳到桌面：
+     照片本身不接收點按，點按會交給外層（商品卡片、照片輪播、縮圖按鈕）。
+     擋得住一般的存圖動作，但擋不住截圖。 */
+  img { pointer-events: none; -webkit-touch-callout: none; -webkit-user-drag: none; user-select: none; -webkit-user-select: none; }
+  .hero, .card-photo, .gallery, .thumbs { -webkit-touch-callout: none; user-select: none; -webkit-user-select: none; }
+
   /* ===== 頁首 ===== */
   /* ===== 頁首：封面插畫＋圓形 logo ===== */
   .hero { background: var(--card); border-bottom: 1px solid var(--line); }
@@ -227,9 +233,10 @@
   @media (hover: hover) { .gallery-nav { display: flex; } }
 
   .thumbs { display: flex; gap: 8px; margin-top: 10px; overflow-x: auto; }
+  .thumbs .thumb { flex: 0 0 auto; padding: 0; border: none; background: none; border-radius: 8px; cursor: pointer; }
   .thumbs img {
-    width: 60px; height: 60px; flex: 0 0 auto; object-fit: cover;
-    border-radius: 8px; border: 2px solid transparent; opacity: 0.6; cursor: pointer;
+    display: block; width: 60px; height: 60px; object-fit: cover;
+    border-radius: 8px; border: 2px solid transparent; opacity: 0.6;
   }
   .thumbs img.active { border-color: var(--brand); opacity: 1; }
 
@@ -760,7 +767,7 @@ function renderDetail(p) {
         </div>
         ${multi ? `
           <div class="thumbs" id="thumbs">
-            ${photos.map((src, i) => `<img src="${esc(thumbAt(p, i))}" class="${i === 0 ? 'active' : ''}" onclick="goToPhoto(${i})" alt="">`).join('')}
+            ${photos.map((src, i) => `<button type="button" class="thumb" onclick="goToPhoto(${i})" aria-label="第 ${i + 1} 張照片"><img src="${esc(thumbAt(p, i))}" class="${i === 0 ? 'active' : ''}" alt=""></button>`).join('')}
           </div>
         ` : ''}
       </div>
@@ -851,6 +858,11 @@ function stepPhoto(direction) {
   const next = (currentPhotoIndex() + direction + count) % count; // 最後一張再按會回到第一張
   goToPhoto(next);
 }
+
+// 電腦版：在照片區域按右鍵不會跳出「另存圖片」選單
+document.addEventListener('contextmenu', e => {
+  if (e.target.closest && e.target.closest('.hero, .card-photo, .gallery, .thumbs')) e.preventDefault();
+});
 
 // 滑動照片時，更新右下角的「1 / 3」和縮圖框
 function onGalleryScroll() {
