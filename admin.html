@@ -73,6 +73,27 @@
   .result { font-size: 14px; margin-top: 12px; margin-bottom: 0 !important; }
   .result.fail { color: var(--danger); }
 
+  /* ===== 分頁切換（商品管理／全站設定） ===== */
+  .tabs { display: flex; gap: 6px; margin-bottom: 16px; }
+  .tab {
+    flex: 1; padding: 10px; border-radius: 10px; border: 1px solid var(--line);
+    background: var(--card); color: var(--muted); font-size: 15px; font-weight: 600;
+    font-family: inherit; cursor: pointer;
+  }
+  .tab.active { background: var(--brand); border-color: var(--brand); color: #fff; }
+
+  /* ===== 全站設定 ===== */
+  .warn {
+    background: #fdf3e7; color: #8a4518; border-radius: 10px;
+    padding: 10px 12px; font-size: 14px; margin-bottom: 16px;
+  }
+  .link-row { display: flex; gap: 8px; }
+  .link-row input { flex: 1; min-width: 0; }
+  .link-preview { font-size: 12px; color: var(--muted); margin-top: 4px; word-break: break-all; }
+  .settings-section { font-size: 13px; font-weight: 700; color: var(--muted); letter-spacing: 0.05em; margin: 4px 0 12px; }
+  /* 區塊之間用分隔線 */
+  .field + .settings-section { border-top: 1px solid var(--line); padding-top: 16px; }
+
   /* ===== 商品管理清單 ===== */
   .page-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
   .page-head h2 { font-size: 18px; }
@@ -194,6 +215,12 @@
       </div>
     </div>
 
+    <!-- ===== 分頁切換 ===== -->
+    <nav class="tabs" id="tabs">
+      <button type="button" class="tab active" data-tab="products">商品管理</button>
+      <button type="button" class="tab" data-tab="settings">全站設定</button>
+    </nav>
+
     <!-- ===== 商品管理清單 ===== -->
     <div id="products-page">
       <div class="page-head">
@@ -213,6 +240,55 @@
         <p id="demo-result" class="result" hidden></p>
       </details>
     </div>
+
+    <!-- ===== 全站設定 ===== -->
+    <form id="settings-form" class="panel" hidden novalidate>
+      <h2>全站設定</h2>
+      <p class="muted">這裡的內容會顯示在前台的每一頁。</p>
+
+      <div id="settings-warn" class="warn" hidden></div>
+      <div id="settings-error" class="error" hidden></div>
+
+      <p class="settings-section">店鋪資訊</p>
+      <div class="field">
+        <label class="field-label" for="s-shopname">店名 <span class="req">*</span></label>
+        <input type="text" id="s-shopname" maxlength="30">
+        <p class="hint">顯示在前台最上方，也是瀏覽器分頁的標題。</p>
+      </div>
+      <div class="field">
+        <label class="field-label" for="s-tagline">標語</label>
+        <input type="text" id="s-tagline" maxlength="40" placeholder="例：自用裝備出清・歡迎私訊詢問">
+      </div>
+
+      <p class="settings-section">聯絡方式</p>
+      <div class="field">
+        <label class="field-label" for="s-line">LINE 連結</label>
+        <div class="link-row">
+          <input type="text" id="s-line" inputmode="url" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="https://line.me/ti/p/…">
+          <a class="btn small" id="s-line-test" target="_blank" rel="noopener">測試</a>
+        </div>
+        <p class="hint">LINE app →「加入好友」→ 行動條碼 → 我的行動條碼，通常可以在那裡複製或分享自己的邀請連結。留空就不顯示 LINE 按鈕。</p>
+      </div>
+      <div class="field">
+        <label class="field-label" for="s-instagram">Instagram 帳號</label>
+        <div class="link-row">
+          <input type="text" id="s-instagram" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="帳號名稱，例：julie.hiking">
+          <a class="btn small" id="s-instagram-test" target="_blank" rel="noopener">測試</a>
+        </div>
+        <p class="link-preview" id="s-instagram-preview"></p>
+        <p class="hint">只要填帳號名稱，系統會自動做成「直接打開私訊」的連結；也可以直接貼完整網址。留空就不顯示 Instagram 按鈕。</p>
+      </div>
+
+      <p class="settings-section">購買須知</p>
+      <div class="field">
+        <textarea id="s-notes" rows="7" placeholder="一行寫一條規則" aria-label="購買須知"></textarea>
+        <p class="hint">顯示在每件商品聯絡區下方，買家點開才會看到。換行會照樣顯示。</p>
+      </div>
+
+      <div class="form-actions">
+        <button type="submit" id="settings-save-btn" class="btn primary">儲存設定</button>
+      </div>
+    </form>
 
     <!-- ===== 上架／編輯表單 ===== -->
     <form id="product-form" class="panel" hidden novalidate>
@@ -328,7 +404,7 @@ import {
   getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut
 } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js';
 import {
-  getFirestore, collection, doc, getDoc, getDocs, addDoc, updateDoc, writeBatch, deleteField
+  getFirestore, collection, doc, getDoc, getDocs, addDoc, setDoc, updateDoc, writeBatch, deleteField
 } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
 
 // =====================================================
@@ -469,8 +545,9 @@ onAuthStateChanged(auth, user => {
   } else {
     $('user-email').textContent = user.email;
     $('admin-view').hidden = false;
-    showListPage();
+    switchTab('products', true);
     loadProducts();
+    loadSettings();
   }
 });
 
@@ -647,6 +724,7 @@ function openForm(p) {
   variants.forEach(v => addVariantRow(v.label || '', v.qty ?? 0));
 
   formDirty = false;
+  $('tabs').hidden = true; // 編輯商品時先藏起分頁，避免沒存就切走
   $('products-page').hidden = true;
   $('product-form').hidden = false;
   window.scrollTo(0, 0);
@@ -654,6 +732,7 @@ function openForm(p) {
 
 function showListPage() {
   $('product-form').hidden = true;
+  $('tabs').hidden = false;
   $('products-page').hidden = false;
   window.scrollTo(0, 0);
 }
@@ -765,6 +844,184 @@ $('product-form').addEventListener('submit', async e => {
 });
 
 // =====================================================
+// 分頁切換：商品管理／全站設定
+// =====================================================
+let currentTab = 'products';
+
+function switchTab(tab, force = false) {
+  if (!force && tab === currentTab) return;
+  if (!force && currentTab === 'settings' && settingsDirty &&
+      !confirm('全站設定還沒儲存，確定要離開嗎？')) return;
+
+  currentTab = tab;
+  document.querySelectorAll('#tabs .tab').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.tab === tab);
+  });
+  $('product-form').hidden = true;
+  $('products-page').hidden = tab !== 'products';
+  $('settings-form').hidden = tab !== 'settings';
+  if (tab === 'settings') fillSettingsForm(); // 每次打開都顯示資料庫裡最新的內容
+  window.scrollTo(0, 0);
+}
+
+$('tabs').addEventListener('click', e => {
+  const btn = e.target.closest('.tab');
+  if (btn) switchTab(btn.dataset.tab);
+});
+
+// =====================================================
+// 全站設定
+// =====================================================
+let siteSettings = null;   // 資料庫裡目前的設定
+let settingsDirty = false; // 設定表單有沒有改過
+
+const SETTINGS_FALLBACK = {
+  shopName: '登山二手小舖',
+  tagline: '',
+  contacts: { line: '', instagram: '' },
+  purchaseNotes: ''
+};
+
+async function loadSettings() {
+  try {
+    const snap = await getDoc(doc(db, 'settings', 'site'));
+    const data = snap.exists() ? snap.data() : {};
+    siteSettings = {
+      ...SETTINGS_FALLBACK,
+      ...data,
+      contacts: { ...SETTINGS_FALLBACK.contacts, ...(data.contacts || {}) }
+    };
+  } catch (err) {
+    siteSettings = null;
+    $('settings-error').textContent = '讀取設定失敗：' + explainError(err);
+    $('settings-error').hidden = false;
+  }
+}
+
+// ----- Instagram：帳號名稱 ⇄ 私訊連結 -----
+// 填「julie.hiking」或「@julie.hiking」→ https://ig.me/m/julie.hiking（點了直接打開私訊）
+// 填完整網址 → 照原樣使用
+function instagramToUrl(input) {
+  const value = input.trim();
+  if (!value) return '';
+  if (/^https?:\/\//i.test(value)) return value;
+  const name = value.replace(/^@/, '');
+  return `https://ig.me/m/${name}`;
+}
+
+// 反過來：資料庫存的是 ig.me 或 instagram.com 的連結時，表單只顯示帳號名稱，比較好讀
+function urlToInstagramInput(url) {
+  const match = String(url || '').match(/^https?:\/\/(?:www\.)?(?:ig\.me\/m|instagram\.com)\/([A-Za-z0-9._]+)\/?$/i);
+  return match ? match[1] : (url || '');
+}
+
+function isPlaceholder(url) {
+  return /your-line-id|your-account/.test(url || '');
+}
+
+function fillSettingsForm() {
+  $('settings-error').hidden = true;
+  if (!siteSettings) {
+    loadSettings().then(() => { if (siteSettings) fillSettingsForm(); });
+    return;
+  }
+  const s = siteSettings;
+  $('s-shopname').value = s.shopName || '';
+  $('s-tagline').value = s.tagline || '';
+  $('s-line').value = s.contacts.line || '';
+  $('s-instagram').value = urlToInstagramInput(s.contacts.instagram);
+  $('s-notes').value = s.purchaseNotes || '';
+
+  // 還是示範用的假連結時提醒一下
+  const placeholders = [];
+  if (isPlaceholder(s.contacts.line)) placeholders.push('LINE');
+  if (isPlaceholder(s.contacts.instagram)) placeholders.push('Instagram');
+  $('settings-warn').textContent = placeholders.length
+    ? `⚠️ ${placeholders.join('、')} 目前還是示範用的假連結，請換成你自己的。`
+    : '';
+  $('settings-warn').hidden = placeholders.length === 0;
+
+  updateLinkPreviews();
+  settingsDirty = false;
+}
+
+// 「測試」按鈕和 Instagram 連結預覽，跟著輸入即時更新
+function updateLinkPreviews() {
+  const line = $('s-line').value.trim();
+  const ig = instagramToUrl($('s-instagram').value);
+  setTestLink($('s-line-test'), line);
+  setTestLink($('s-instagram-test'), ig);
+  $('s-instagram-preview').textContent = ig ? `買家點按鈕會打開：${ig}` : '';
+}
+
+function setTestLink(el, url) {
+  const ok = /^https?:\/\//i.test(url);
+  if (ok) el.href = url; else el.removeAttribute('href');
+  el.style.opacity = ok ? '' : '0.4';
+  el.style.pointerEvents = ok ? '' : 'none';
+}
+
+$('settings-form').addEventListener('input', () => {
+  settingsDirty = true;
+  updateLinkPreviews();
+});
+
+function readSettingsForm() {
+  const errors = [];
+  const shopName = $('s-shopname').value.trim();
+  const line = $('s-line').value.trim();
+  const igInput = $('s-instagram').value.trim();
+  const instagram = instagramToUrl(igInput);
+
+  if (!shopName) errors.push('請填寫店名');
+  if (line && !/^https?:\/\//i.test(line)) {
+    errors.push('LINE 連結要以 https:// 開頭（請貼上完整的邀請連結）');
+  }
+  if (igInput && !/^https?:\/\//i.test(igInput) &&
+      !/^@?[A-Za-z0-9._]{1,30}$/.test(igInput)) {
+    errors.push('Instagram 帳號只能有英文、數字、底線和句點；或直接貼上完整網址');
+  }
+
+  return {
+    errors,
+    data: {
+      shopName,
+      tagline: $('s-tagline').value.trim(),
+      contacts: { line, instagram },
+      purchaseNotes: $('s-notes').value.trim()
+    }
+  };
+}
+
+$('settings-form').addEventListener('submit', async e => {
+  e.preventDefault();
+  const { data, errors } = readSettingsForm();
+  if (errors.length) {
+    $('settings-error').textContent = errors.join('\n');
+    $('settings-error').hidden = false;
+    $('settings-error').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    return;
+  }
+  $('settings-error').hidden = true;
+
+  $('settings-save-btn').disabled = true;
+  $('settings-save-btn').textContent = '儲存中…';
+  try {
+    // 整份覆蓋：舊版留下的 Facebook、Threads 等欄位也會一起清掉
+    await setDoc(doc(db, 'settings', 'site'), data);
+    siteSettings = data;
+    fillSettingsForm();
+    showToast('設定已儲存');
+  } catch (err) {
+    $('settings-error').textContent = '儲存失敗：' + explainError(err);
+    $('settings-error').hidden = false;
+  } finally {
+    $('settings-save-btn').disabled = false;
+    $('settings-save-btn').textContent = '儲存設定';
+  }
+});
+
+// =====================================================
 // 示範資料（只用來測試，開始上架真商品後就可以清除）
 // =====================================================
 
@@ -853,7 +1110,7 @@ const DEMO_PRODUCTS = [
   }
 ];
 
-// 全站設定的初始內容（5-4 會做修改設定的畫面）
+// 全站設定的初始內容（只在資料庫還沒有設定時寫入；之後請到「全站設定」修改）
 const DEMO_SETTINGS = {
   shopName: '登山二手小舖',
   tagline: '自用裝備出清・歡迎私訊詢問',
@@ -897,6 +1154,7 @@ $('import-btn').addEventListener('click', async () => {
     }
 
     await batch.commit();
+    await loadSettings();
     showResult('✅ 匯入完成！');
   } catch (err) {
     showResult('❌ 匯入失敗：' + explainError(err), true);
