@@ -330,10 +330,11 @@ const FIREBASE_VERSION = '12.19.0';
 
 async function loadData() {
   const { app } = await import('./firebase-config.js');
-  const { getFirestore, collection, getDocs, doc, getDoc } =
+  const { getFirestore, collection, getDocs, doc, getDoc, setDoc, increment } =
     await import(`https://www.gstatic.com/firebasejs/${FIREBASE_VERSION}/firebase-firestore.js`);
 
   const db = getFirestore(app);
+  statsDb = { db, doc, setDoc, increment }; // 給瀏覽統計用
 
   // 商品和全站設定同時讀，比較快
   const [productSnap, settingsSnap] = await Promise.all([
@@ -379,6 +380,69 @@ function normalizeProduct(id, data) {
     status: data.status === '保留中' ? '保留中' : '販售中',
     createdAt: data.createdAt || ''
   };
+}
+
+// =====================================================
+// 瀏覽統計：只記「次數」，不記任何個人資料
+//   網站訪客：同一台裝置每天只算一次
+//   商品瀏覽：同一台裝置、同一件商品，每天只算一次
+//   詢問：按「複製商品資訊」、LINE、Instagram；
+//         同一台裝置、同一件商品、同一個按鈕，每天只算一次
+//   在這台裝置登入過後台（也就是你自己），就不會被計入
+// =====================================================
+let statsDb = null;
+
+// 今天的日期（台灣時間），例如 2026-10-13
+function todayKey() {
+  const d = new Date();
+  const pad = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+function statsSkipped() {
+  try { return localStorage.getItem('statsSkip') === '1'; } catch { return false; }
+}
+
+// 這件事今天是第一次發生嗎？是的話記下來並回傳 true
+// 記錄只留今天的，日期一換就自動清空
+function firstTimeToday(key) {
+  try {
+    const day = todayKey();
+    const saved = JSON.parse(localStorage.getItem('statsSeen') || '{}');
+    const seen = saved.day === day ? saved.keys : {};
+    if (seen[key]) return false;
+    seen[key] = 1;
+    localStorage.setItem('statsSeen', JSON.stringify({ day, keys: seen }));
+    return true;
+  } catch {
+    return false; // 瀏覽器不讓存資料時寧可少算，也不要重複算
+  }
+}
+
+// 把資料庫裡的幾個計數各 +1；失敗也不影響買家瀏覽
+function bump(path, fields) {
+  if (!statsDb || statsSkipped() || fields.length === 0) return;
+  const data = {};
+  fields.forEach(f => { data[f] = statsDb.increment(1); });
+  statsDb.setDoc(statsDb.doc(statsDb.db, ...path), data, { merge: true }).catch(() => {});
+}
+
+function trackVisit() {
+  if (firstTimeToday('visit')) bump(['statsDaily', todayKey()], ['visitors']);
+}
+
+function trackProductView(id) {
+  if (!firstTimeToday('view:' + id)) return;
+  bump(['productStats', id], ['views']);
+  bump(['statsDaily', todayKey()], ['productViews']);
+}
+
+// channel：'copy'（複製商品資訊）、'line'、'instagram'
+function trackInquiry(id, channel) {
+  const fields = [];
+  if (firstTimeToday('ask:' + id)) fields.push('inquiries');            // 詢問人次（任一按鈕）
+  if (firstTimeToday(`ask:${id}:${channel}`)) fields.push(channel);     // 各按鈕分開算
+  bump(['productStats', id], fields);
 }
 
 // 把店名、標語放到頁首
@@ -573,6 +637,7 @@ function renderDetail(p) {
   ].filter(([, , url]) => url)
    .map(([key, label, url]) =>
      `<a class="pill" href="${esc(url)}" target="_blank" rel="noopener"
+         onclick="trackInquiry('${esc(p.id)}', '${key}')"
          aria-label="用 ${label} 私訊">${SOCIAL_ICONS[key]}<span>${label}</span></a>`
    ).join('');
 
@@ -700,6 +765,7 @@ function onGalleryScroll() {
 // ----- 複製商品資訊 -----
 function copyProductInfo() {
   const p = currentProduct;
+  trackInquiry(p.id, 'copy');
   const link = location.href.split('#')[0] + '#product/' + p.id;
   const chosen = hasSizes(p) ? p.variants[selectedVariant] : null;
 
@@ -764,6 +830,7 @@ function router() {
 
     if (p) {
       renderDetail(p);
+      trackProductView(p.id);
     } else {
       detailView.innerHTML = `
         <button class="back-btn" onclick="goBack()">← 返回商品列表</button>
@@ -817,6 +884,7 @@ async function start() {
   }
 
   statusMsg.hidden = true;
+  trackVisit();
   applySettings();
   renderFilters();
   renderGrid();
